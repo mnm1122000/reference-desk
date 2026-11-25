@@ -339,31 +339,44 @@
     return `a ${F(s.length, 'LENGTH')} ${F(s.format, 'FORMAT')}${t(s.brand) ? ' for ' + t(s.brand) : ''}, aspect ratio ${aspect(S)}`;
   }
 
+  const SHOT_SCHEMA = '{ "code": "SC01_SH01", "scene": "SC01", "type": "action|dialogue|broll|transition", "style": "comedy|premium", "speed": "real|slow", "duration": 5, "screen": 2.5, "size": "WS|MS|MCU|CU|ECU|Insert", "angle": "", "lens": "50mm", "aperture": "2", "move": "", "characters": ["exact name"], "place": "exact name", "props": ["exact name"], "meme": "", "moment": "", "blocking": "", "beats": "0-2s: ...\\n2-4s: ...", "physics": "", "light": "", "speaker": "", "line": "", "delivery": "", "audio": "", "onscreen": "", "vo": "", "sfx": "", "music": "", "edit": "", "transition": "" }';
   const JSON_SCHEMA = `{
-  "project": { "title": "", "logline": "", "format": "", "length": "", "mood": "", "palette": "" },
+  "project": { "title": "", "logline": "", "format": "", "length": "", "mood": "", "palette": "", "aspect": "16:9|9:16|4:5|1:1", "language": "" },
   "characters": [ { "name": "", "role": "main|secondary", "age": "", "gender": "", "ethnicity": "", "height": "", "build": "", "faceShape": "", "eyes": "", "hair": "", "features": "", "outfit": "", "outfit2": "", "emotion": "", "voice": "" } ],
   "places": [ { "name": "", "kind": "interior|exterior", "description": "", "time": "", "lightSource": "", "lightDir": "", "mainArea": "", "materials": "", "livedIn": "", "weather": "", "variant": "" } ],
   "props": [ { "name": "", "what": "", "size": "", "materials": "", "colors": "", "logoText": "", "detail": "", "wearable": "yes|no", "usage": "", "scaleObject": "", "surface": "" } ],
-  "shots": [ { "code": "SC01_SH01", "scene": "SC01", "type": "action|dialogue|broll|transition", "duration": 6, "size": "WS|MS|MCU|CU|ECU", "angle": "", "lens": "50mm", "aperture": "2", "move": "", "characters": ["name"], "place": "name", "props": ["name"], "moment": "", "blocking": "", "beats": "0-2s: ...\\n2-4s: ...", "physics": "", "light": "", "speaker": "", "line": "", "delivery": "", "audio": "", "transition": "" } ]
+  "shots": [ ${SHOT_SCHEMA} ]
 }`;
+  const BRIEF_RULES = [
+    '- If the input is a full creative brief or master prompt, treat it as the source of truth. Keep its scene order, timings, dialogue, on-screen text, sound effects, music cues and voice-over exactly as written.',
+    '- Split every scene into separately generatable shots. One physical action per shot. A scene with two speakers becomes one dialogue shot per line.',
+    '- duration = clip length to generate (4 to 8 s). screen = seconds actually used in the edit, following the brief timings.',
+    '- Split-screen or multi-panel formats (for example a top and bottom panel) become separate shots that are combined in the edit.',
+    '- Meme or reference formats: write the format name in meme, and recreate its composition, poses and expressions with our own characters. Never copy the original image, people or artwork.',
+    '- style = comedy for sketch and meme shots (handheld, natural light), premium for product and brand shots (controlled studio light, smooth slider moves). speed = slow only for slow-motion product moments such as spray mist.',
+    '- Captions, meme labels, subtitles, thought bubbles, logos, end cards and calls to action never go inside the generated shot. Put them in onscreen or edit.',
+    '- Freeze frames, crash zooms and punch-ins are edit effects: put them in edit, not in move.',
+    '- Product truth: never invent product names, bottle designs, claims, notes, prices, promotions or links. Where the brief is unsure, write [VERIFY: ...].'
+  ];
 
   function breakdown(S) {
     return {
-      id: 'BD', tag: 'BREAKDOWN', title: 'Story breakdown (paste into Claude or ChatGPT)',
-      note: 'Paste this prompt, copy the JSON it returns, then paste that JSON into the import box below. Every character, place, prop and shot is filled in for you.',
+      id: 'BD', tag: 'BREAKDOWN', title: 'Story or brief breakdown (paste into Claude or ChatGPT)',
+      note: 'Works with a short story or a full creative brief. Paste this prompt, copy the JSON it returns, then paste that JSON into the import box below.',
       attach: [],
       text: L(
-        'You are a director, director of photography and casting director preparing an AI video production. Break the story below into locked production assets and a shotlist.',
+        'You are a director, director of photography, casting director and editor preparing an AI video production. Break the story or brief below into locked production assets and a complete shotlist, so that every shot can be generated separately and assembled in the edit.',
         `Project: ${projectLine(S)}.${t(S.settings.mood) ? ' Mood: ' + t(S.settings.mood) + '.' : ''}`,
         ' ',
-        'STORY:',
-        F(S.story, 'PASTE YOUR STORY HERE'),
+        'STORY OR BRIEF:',
+        F(S.story, 'PASTE YOUR STORY OR BRIEF HERE'),
         ' ',
         'RULES',
         '- Characters: invent precise, filmable physical details where the story is silent (age, height in cm, build, face shape, eyes, hair, distinguishing marks, exact outfit with colors and materials). Keep each face distinct.',
         '- Places: give each a time of day, ONE named main light source and its direction, materials, and small lived-in details.',
         '- Props: give each a real size, materials, colors, any logo text, and the key macro detail.',
-        '- Shots: 3 to 8 seconds each, ONE physical action per shot, varied shot sizes (never two wides in a row), screen direction consistent, 1 or 2 texture or b-roll shots per scene. Beats are time-coded. Dialogue lines are under 8 seconds (about 20 words); prefer voice-over or reaction shots over long talking.',
+        '- Shots: ONE physical action per shot, varied shot sizes (never two wides in a row), consistent screen direction. Beats are time-coded. Dialogue lines are under 8 seconds.',
+        BRIEF_RULES,
         '- Avoid shots that AI handles badly: crowds, fast fights, complex hand interactions, text inside the video.',
         '- Never use empty words like cinematic, epic, 8k or masterpiece. Use lens, light source and physical detail instead.',
         ' ',
@@ -457,9 +470,10 @@
           '- 1 or 2 texture shots per scene (steam, fabric, footsteps, reflections).',
           '- Each shot names ONE light source with direction, a lens, an aperture and a camera move.',
           '- Never use the words cinematic, epic, 8k or masterpiece.',
+          BRIEF_RULES,
           ' ',
           'Reply with ONLY valid JSON: { "shots": [ ... ] }, where each shot has exactly these keys:',
-          '{ "code": "SC01_SH01", "scene": "SC01", "type": "action|dialogue|broll|transition", "duration": 6, "size": "WS|MS|MCU|CU|ECU", "angle": "", "lens": "50mm", "aperture": "2", "move": "", "characters": ["exact asset name"], "place": "exact asset name", "props": ["exact asset name"], "moment": "", "blocking": "", "beats": "0-2s: ...\\n2-4s: ...", "physics": "", "light": "", "speaker": "", "line": "", "delivery": "", "audio": "", "transition": "" }'
+          SHOT_SCHEMA
         )
       },
       {
@@ -509,9 +523,10 @@
     const place = S.places.find((p) => p.id === s.placeId);
     const props = (s.propIds || []).map((id) => S.props.find((r) => r.id === id)).filter(Boolean);
     const list = [];
-    chars.forEach((c) => list.push({ kind: 'c', obj: c, label: `${c.name || 'Character'} sheet`, img: ref(c) }));
+    chars.forEach((c) => list.push({ kind: 'c', obj: c, label: `${c.name || 'Character'} ${s.outfit === 'second' ? 'outfit-2 sheet (C4)' : 'sheet'}`, img: ref(c) }));
     if (place) list.push({ kind: 'p', obj: place, label: `${place.name || 'Place'} sheet`, img: ref(place) });
     props.forEach((r) => list.push({ kind: 'r', obj: r, label: `${r.name || 'Prop'} sheet`, img: ref(r) }));
+    if (s.refImg || s.ref) list.push({ kind: 'x', obj: 'ref', label: `Composition reference${t(s.meme) ? ' (' + t(s.meme) + ')' : ''}`, img: s.refImg || null });
     list.forEach((x, i) => (x.n = i + 1));
     return { chars, place, props, list };
   }
@@ -522,45 +537,69 @@
     return `0.0-${a}s: [FIRST ACTION]\n${a}-${b}s: [MAIN ACTION]\n${b}-${dur}s: [SETTLE / REACTION]`;
   }
 
+  const PREMIUM_CAM = 'Camera: smooth, controlled motorised slider or dolly move, steady and physically real. No shake, no jitter, no sudden speed changes.';
+  const SLOW = 'Speed: smooth, constant slow motion (120 fps look played back at 24 fps). No speed ramps.';
+  function videoGuards(s) {
+    const premium = s.style === 'premium', slow = s.speed === 'slow';
+    return G.video.map((x) => {
+      if (x.startsWith('Camera:')) return premium ? PREMIUM_CAM : x;
+      if (x.startsWith('Speed:')) return slow ? SLOW : x;
+      return x;
+    });
+  }
+  function safeArea(S) {
+    return aspect(S) === '9:16' ? 'Vertical 9:16 framing: keep faces and the product inside the central safe area, and leave the top 15% and bottom 20% of the frame free of important detail for captions and app buttons.' : '';
+  }
+
   function shotPrompts(S, s, next) {
     const R = shotRefs(S, s);
     const logo = R.props.map((r) => r.logoText).filter(Boolean).join(', ');
     const out = [];
     const nOf = (o) => R.list.find((x) => x.obj === o)?.n;
     const dur = Number(s.duration) || 6;
+    const premium = s.style === 'premium';
+    const slow = s.speed === 'slow';
+    const refN = nOf('ref');
 
     // A. start frame
     out.push({
       id: 'A', tag: 'A', title: 'Start frame (image)', required: true,
-      note: 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it.',
+      note: refN ? 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it. The last image only guides the composition.' : 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it.',
       attach: attachList(R.list.map((x) => ({ label: x.label, img: x.img }))),
       text: L(
-        `A single photographic film still. Shot ${F(s.code, 'SHOT CODE')}.`,
-        R.chars.map((c) => `Character: ${c.name || 'the character'}, the exact person from Image ${nOf(c)}, with identical face, hair, skin texture, body and outfit (${F(c.outfit, 'OUTFIT')}).`),
+        `A single photographic ${premium ? 'fragrance-commercial still' : 'film still'}. Shot ${F(s.code, 'SHOT CODE')}.`,
+        R.chars.map((c) => `Character: ${c.name || 'the character'}, the exact person from Image ${nOf(c)}, with identical face, hair, skin texture and body, wearing ${s.outfit === 'second' && t(c.outfit2) ? 'their second outfit (' + t(c.outfit2) + ')' : 'their outfit (' + F(c.outfit, 'OUTFIT') + ')'}.`),
         R.place ? `Location: the exact place from Image ${nOf(R.place)} (${R.place.name || 'location'}), with the same architecture, furniture, materials and colors.` : 'Location: [LOCATION]',
         R.props.map((r) => `Prop: the exact ${r.name || 'product'} from Image ${nOf(r)}, with the same shape, logo and label, at correct real-world scale (${F(r.size, 'SIZE')}).`),
+        refN ? `Composition: Image ${refN} is a COMPOSITION REFERENCE only${t(s.meme) ? ' (the "' + t(s.meme) + '" format)' : ''}. Match its framing, camera angle, poses, body language, expressions and where everyone is placed. Do NOT copy its people, faces, clothing, colors, text or drawing style. Use only our characters, location and product.` : '',
         ' ',
         `Moment: ${F(s.moment, 'ONE FROZEN MOMENT')}.`,
         `Blocking: ${F(s.blocking, 'WHO IS WHERE ON SCREEN, e.g. character at right third x 65%, facing left; product foreground x 40%')}. Everything is already in place.`,
         `Shot size and angle: ${F(s.size, 'SHOT SIZE')}, ${F(s.angle, 'ANGLE AND CAMERA HEIGHT')}.`,
         `Lens: ${F(s.lens, 'LENS')}, f/${F(s.aperture, 'APERTURE')}, natural background falloff.`,
         `Light: ${F(s.light, R.place ? placeLight(R.place) : 'NAMED SOURCE + DIRECTION + QUALITY')}. No flat front light.`,
-        `Color and film: ${film(S)}, natural grain, gentle halation on highlights${t(S.settings.palette) ? ', palette: ' + t(S.settings.palette) : ''}.`,
+        premium ? `Color and finish: premium fragrance-commercial look, controlled highlights and reflections, deep clean shadows, ${film(S)} grain kept very fine.` : `Color and film: ${film(S)}, natural grain, gentle halation on highlights${t(S.settings.palette) ? ', palette: ' + t(S.settings.palette) : ''}.`,
+        safeArea(S),
+        'No captions, labels, thought bubbles or added text in the image. Those are added in the edit.',
         `Aspect ratio: ${aspect(S)}.`,
         guards(S, G.frame(logo))
       )
     });
 
-    // video attach order: Image 1 = start frame, then character and prop sheets (no place)
-    const vlist = R.list.filter((x) => x.kind !== 'p');
+    // video attach order: Image 1 = start frame, then character and prop sheets (no place, no composition ref)
+    const vlist = R.list.filter((x) => x.kind === 'c' || x.kind === 'r');
     const vN = (o) => vlist.findIndex((x) => x.obj === o) + 2;
+    const vAttach = attachList([{ label: 'Approved start frame (first frame)', img: s.frame }, ...vlist.map((x) => ({ label: x.label, img: x.img }))]);
     const head = L(
       `SCENE CONTEXT: ${t(S.settings.logline) ? t(S.settings.logline) + ' ' : ''}${F(s.moment, 'WHAT HAPPENS IN THIS SHOT')}.`,
       R.chars.length ? 'CHARACTER: ' + R.chars.map((c) => `${c.name || 'the character'} (reference Image ${vN(c)})`).join(', ') + '. Identical face, hair and outfit as the start frame for the whole shot.' : '',
       R.props.length ? 'PRODUCT: ' + R.props.map((r) => `${r.name || 'the product'} (reference Image ${vN(r)})`).join(', ') + '. Identical shape, logo and label for the whole shot.' : '',
       'FIRST FRAME: Starts exactly on the provided start frame (Image 1). Everything is already in position. No empty frame, no delayed reveal.',
-      `FORMAT: Single continuous take, ${dur} seconds, real-time speed. No cuts, no transitions, no speed ramps, no slow motion.`
+      slow
+        ? `FORMAT: Single continuous take, ${dur} seconds, smooth constant slow motion (120 fps look). No cuts, no transitions, no speed ramps.`
+        : `FORMAT: Single continuous take, ${dur} seconds, real-time speed. No cuts, no transitions, no speed ramps, no slow motion.`
     );
+    const camTail = premium ? 'Smooth and controlled, no shake.' : 'Never gimbal-smooth, never digital jitter.';
 
     if (s.type === 'dialogue') {
       const sp = R.chars.find((c) => (c.name || '').toLowerCase() === t(s.speaker).toLowerCase()) || R.chars[0];
@@ -568,61 +607,134 @@
       out.push({
         id: 'C', tag: 'C', title: 'Dialogue / lip-sync video', required: true,
         note: 'Use a tool with native audio or lip-sync (Veo, Kling, WAN, Seedance with audio). Keep the line under 8 seconds.',
-        attach: attachList([{ label: 'Approved start frame (first frame)', img: s.frame }, ...R.list.filter((x) => x.kind !== 'p').map((x) => ({ label: x.label, img: x.img }))]),
+        attach: vAttach,
         text: L(
           head,
-          `OPTICS AND CAMERA: ${F(s.lens, '85mm')}, f/${F(s.aperture, '2')}, focus locked on the speaker's eyes. ${t(s.move) || 'Static camera with a tiny natural handheld drift'}.`,
+          `OPTICS AND CAMERA: ${F(s.lens, '85mm')}, f/${F(s.aperture, '2')}, focus locked on the speaker's eyes. ${t(s.move) || 'Static camera with a tiny natural handheld drift'}. ${camTail}`,
           `DIALOGUE (${sp ? sp.name || 'speaker' : F(s.speaker, 'SPEAKER')}${sp && t(sp.voice) ? ', voice: ' + t(sp.voice) : ''}${t(s.delivery) ? ', delivery: ' + t(s.delivery) : ''}):`,
           `"${F(s.line, 'EXACT LINE, max about 20 words')}"`,
+          t(S.settings.language) ? `LANGUAGE AND ACCENT: ${t(S.settings.language)}. Say the line exactly as written.` : '',
           `PERFORMANCE: ${t(s.beats) ? '\n' + t(s.beats) : 'A small breath before speaking, natural blinks, eyebrows and cheeks move with the emotion, micro head movements.'}`,
           listeners.length ? `LISTENER: ${listeners.map((c) => c.name).join(', ')} listens with small natural reactions and the mouth closed.` : '',
           `LIGHTING: ${F(s.light, R.place ? placeLight(R.place) : 'NAMED KEY LIGHT')}, catchlight in the eyes, consistent through the shot.`,
           `AUDIO: The voice sounds recorded in the room, with natural reverb for ${R.place ? R.place.name || 'the location' : 'the location'}. ${t(s.audio) || 'Quiet room tone'}. No music, no subtitles.`,
           `POSITIVE LOCKS: Identical face, teeth, hair and outfit throughout. Only ${sp ? sp.name || 'the speaker' : 'the speaker'} speaks.`,
           `LOOK: ${film(S)}, natural grain.`,
-          guards(S, G.video, G.dialogue)
+          guards(S, videoGuards(s), G.dialogue)
         )
       });
     } else {
       const broll = s.type === 'broll';
       out.push({
-        id: 'B', tag: broll ? 'E' : 'B', title: broll ? 'Texture / b-roll video' : 'Video shot spec (image to video)', required: true,
+        id: 'B', tag: broll ? 'E' : 'B', title: broll ? 'Texture / b-roll / product video' : 'Video shot spec (image to video)', required: true,
         note: 'Upload the approved start frame as the first frame. Add the character and prop sheets as extra references if the tool allows it.',
-        attach: attachList([{ label: 'Approved start frame (first frame)', img: s.frame }, ...R.list.filter((x) => x.kind !== 'p').map((x) => ({ label: x.label, img: x.img }))]),
+        attach: vAttach,
         text: L(
           head,
           `OPTICS: ${F(s.lens, 'LENS')} lens, f/${F(s.aperture, 'APERTURE')}, focus locked on ${R.chars[0] && !broll ? 'the face' : 'the subject'}. The lens stays the same for the whole shot. No fisheye.`,
-          `CAMERA: ${F(s.move, 'CAMERA MOVE, e.g. handheld, slow push-in of about 20 cm')}. Never gimbal-smooth, never digital jitter.`,
+          `CAMERA: ${F(s.move, 'CAMERA MOVE, e.g. handheld, slow push-in of about 20 cm')}. ${camTail}`,
           'ACTION TIMING:',
           t(s.beats) || defaultBeats(dur),
           `PHYSICS: ${t(s.physics) || 'Real weight and inertia in every movement. Fabric and hair react naturally. Objects have real mass.'}`,
           `LIGHTING: Key light is ${F(s.light, R.place ? placeLight(R.place) : 'NAMED SOURCE + DIRECTION')}. Shadows keep visible detail, never crushed. The light stays consistent through the shot.`,
           `AUDIO: ${t(s.audio) || 'Natural room tone and the real sounds of the action'}. No dialogue, no subtitles, no music.`,
           `POSITIVE LOCKS: ${[R.chars.length ? 'face, hairstyle and outfit' : '', R.props.length ? R.props.map((r) => (r.name || 'product') + ' design and logo').join(', ') : '', 'background objects'].filter(Boolean).join(', ')} stay identical in every frame.`,
-          `LOOK: ${film(S)}, natural grain, soft halation, natural-light realism.`,
-          guards(S, G.video)
+          premium ? `LOOK: premium fragrance commercial, controlled reflections, very fine ${film(S)} grain.` : `LOOK: ${film(S)}, natural grain, soft halation, natural-light realism.`,
+          guards(S, videoGuards(s))
         )
       });
       out.push({
         id: 'Bs', tag: 'SHORT', title: 'Short version (small prompt boxes)', attach: [],
-        text: `${dur}s single take. ${F(s.move, 'CAMERA MOVE')}, ${F(s.lens, 'LENS')} f/${F(s.aperture, 'AP')}. ${F(s.moment, 'ACTION')}. Real weight, cloth and hair movement. ${F(s.light, 'LIGHT SOURCE')}, consistent light. Identical face, outfit and product logo throughout. ${film(S)} grain. Handheld, never gimbal-smooth. Real-time, no slow motion, no cuts, no morphing, no text, no music.`
+        text: `${dur}s single take. ${F(s.move, 'CAMERA MOVE')}, ${F(s.lens, 'LENS')} f/${F(s.aperture, 'AP')}. ${F(s.moment, 'ACTION')}. Real weight, cloth and hair movement. ${F(s.light, 'LIGHT SOURCE')}, consistent light. Identical face, outfit and product logo throughout. ${film(S)} grain. ${premium ? 'Smooth controlled slider move, no shake.' : 'Handheld, never gimbal-smooth.'} ${slow ? 'Smooth constant slow motion.' : 'Real-time, no slow motion.'} No cuts, no morphing, no text, no music.`
       });
+    }
+
+    const editLines = [
+      t(s.screen) ? `Use ${t(s.screen)} s of the ${dur} s clip. Trim the first and last 0.5 s first.` : '',
+      t(s.onscreen) ? `ON SCREEN TEXT: ${t(s.onscreen)}` : '',
+      t(s.vo) ? `VOICE-OVER: "${t(s.vo)}"` : '',
+      t(s.sfx) ? `SFX: ${t(s.sfx)}` : '',
+      t(s.music) ? `MUSIC: ${t(s.music)}` : '',
+      t(s.edit) ? `EDIT: ${t(s.edit)}` : ''
+    ].filter(Boolean);
+    if (editLines.length) {
+      out.push({ id: 'EDIT', tag: 'EDIT', title: 'Edit notes (not generated)', note: 'Do these in CapCut, Premiere or DaVinci. Never put text in the generation prompt.', attach: [], text: editLines.join('\n') });
     }
 
     if (next || s.type === 'transition') {
       out.push({
         id: 'D', tag: 'D', title: `Transition to ${next ? next.code || 'next shot' : 'next shot'}`,
-        note: 'Use first-frame and last-frame mode if your tool has it.',
+        note: 'Optional. Use first-frame and last-frame mode if your tool has it. Most cuts work better as straight cuts in the edit.',
         attach: attachList([{ label: 'This shot\'s start frame (first frame)', img: s.frame }, { label: 'Next shot\'s start frame (last frame)', img: next && next.frame }]),
         text: L(
           'FIRST FRAME: Image 1. LAST FRAME: Image 2.',
-          `Transition type: ${F(s.transition, 'e.g. match cut through the sunglasses lens / whip pan with real motion blur / object wipe as a person passes the lens')}.`,
+          `Transition type: ${F(s.transition, 'e.g. match cut / whip pan with real motion blur / object wipe as a person passes the lens')}.`,
           'Duration 3 seconds. Continuous, physically plausible camera movement. Lighting changes are motivated by the move.',
-          guards(S, G.video.filter((x) => !x.startsWith('Never')), 'Never: morphing faces, melting objects, flashy effects, text.')
+          guards(S, videoGuards(s).filter((x) => !x.startsWith('Never')), 'Never: morphing faces, melting objects, flashy effects, text.')
         )
       });
     }
     return out;
+  }
+
+  /* ================= EDIT & ASSEMBLY ================= */
+  function tc(sec) {
+    const m = Math.floor(sec / 60), s = sec - m * 60;
+    return `${String(m).padStart(2, '0')}:${s.toFixed(1).padStart(4, '0')}`;
+  }
+  function srtTime(sec) {
+    const ms = Math.round(sec * 1000); const h = Math.floor(ms / 3600000), m = Math.floor(ms / 60000) % 60, s = Math.floor(ms / 1000) % 60, r = ms % 1000;
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(r).padStart(3, '0')}`;
+  }
+  function timeline(S) {
+    let at = 0;
+    return S.shots.map((s) => { const len = Number(s.screen) || Number(s.duration) || 0; const row = { s, start: at, end: at + len, len }; at += len; return row; });
+  }
+  function assembly(S) {
+    const rows = timeline(S);
+    const total = rows.length ? rows[rows.length - 1].end : 0;
+    const name = (id, arr) => (arr.find((x) => x.id === id) || {}).name || '';
+    const guide = L(
+      `ASSEMBLY GUIDE: ${t(S.settings.title) || 'project'} (${aspect(S)}, ${tc(total)} total)`,
+      ' ',
+      'Global steps:',
+      '1. Lay the clips on the timeline in this order. Trim the first and last 0.5 s of every generated clip, where most warping happens.',
+      '2. Cut to the screen time listed. Comedy cuts are hard and fast; premium shots get longer holds and soft dissolves.',
+      '3. Do freeze frames, crash zooms and punch-ins digitally in the edit (scale 110 to 160% with motion blur), not in generation.',
+      '4. Add on-screen text, meme labels, thought bubbles, logos and the CTA as graphics. Keep them inside the platform safe area.',
+      '5. Apply one colour grade across each section and one fine grain pass over everything so all shots match.',
+      '6. Add music, sound effects and voice-over from the cue sheet. Sound effects go only where listed.',
+      '7. Import the SRT for subtitles, then export 1080x1920, H.264, 30 fps.',
+      ' ',
+      'Shot by shot:',
+      rows.map((r) => L(
+        `${tc(r.start)}-${tc(r.end)}  ${r.s.code || ''}  ${r.s.style === 'premium' ? '[PREMIUM]' : ''}${t(r.s.meme) ? ' [' + t(r.s.meme) + ']' : ''}`,
+        `   Shot: ${t(r.s.moment) || '-'}${r.s.duration ? ` (use ${r.len} s of the ${r.s.duration} s clip)` : ''}`,
+        r.s.type === 'dialogue' && t(r.s.line) ? `   Dialogue: ${t(r.s.speaker) || 'Speaker'}: "${t(r.s.line)}"` : '',
+        t(r.s.onscreen) ? `   On screen: ${t(r.s.onscreen)}` : '',
+        t(r.s.vo) ? `   VO: "${t(r.s.vo)}"` : '',
+        t(r.s.sfx) ? `   SFX: ${t(r.s.sfx)}` : '',
+        t(r.s.music) ? `   Music: ${t(r.s.music)}` : '',
+        t(r.s.edit) ? `   Edit: ${t(r.s.edit)}` : ''
+      )).join('\n')
+    );
+    let n = 0;
+    const srt = rows.flatMap((r) => {
+      const out = [];
+      if (r.s.type === 'dialogue' && t(r.s.line)) out.push(`${++n}\n${srtTime(r.start + 0.1)} --> ${srtTime(Math.max(r.start + 0.6, r.end - 0.1))}\n${t(r.s.line)}\n`);
+      if (t(r.s.vo)) out.push(`${++n}\n${srtTime(r.start + 0.1)} --> ${srtTime(Math.max(r.start + 0.6, r.end - 0.1))}\n${t(r.s.vo)}\n`);
+      return out;
+    }).join('\n');
+    const cues = rows.filter((r) => t(r.s.sfx) || t(r.s.music) || t(r.s.vo)).map((r) => `${tc(r.start)}  ${r.s.code}  ${[t(r.s.sfx) && 'SFX: ' + t(r.s.sfx), t(r.s.music) && 'MUSIC: ' + t(r.s.music), t(r.s.vo) && 'VO: ' + t(r.s.vo)].filter(Boolean).join(' | ')}`).join('\n');
+    const placement = rows.filter((r) => (r.s.propIds || []).length).map((r) => `${tc(r.start)}  ${r.s.code}  ${(r.s.propIds || []).map((id) => name(id, S.props)).join(', ')}: ${t(r.s.moment)}`).join('\n');
+    const chars = S.characters.map((c) => `${c.name}: ${charDesc(c)}. ${F(c.faceShape, 'FACE')} face, ${F(c.eyes, 'EYES')} eyes, hair ${F(c.hair, 'HAIR')}. Outfit: ${F(c.outfit, 'OUTFIT')}${t(c.outfit2) ? '. Second outfit: ' + t(c.outfit2) : ''}. Appears in: ${S.shots.filter((s) => (s.charIds || []).includes(c.id)).map((s) => s.code).join(', ') || 'no shots yet'}.`).join('\n');
+    return [
+      { id: 'ASM', tag: 'GUIDE', title: 'Assembly guide (for you or your editor)', required: true, attach: [], text: guide },
+      { id: 'SRT', tag: 'SRT', title: 'Subtitles file (save as subtitles.srt)', attach: [], note: 'Paste into a text file named subtitles.srt and import it into your editor. Timings follow the screen times.', text: srt || '(no dialogue or voice-over yet)' },
+      { id: 'SFX', tag: 'SOUND', title: 'Sound design cue sheet', attach: [], text: cues || '(no sound cues yet)' },
+      { id: 'PROD', tag: 'PRODUCT', title: 'Product placement guide', attach: [], text: placement || '(no props assigned to shots yet)' },
+      { id: 'CONT', tag: 'CAST', title: 'Character continuity guide', attach: [], text: chars || '(no characters yet)' }
+    ];
   }
 
   /* ================= FIX LIBRARY ================= */
@@ -662,5 +774,5 @@
     'Does it hold up next to the shot before and after it?'
   ];
 
-  window.Prompts = { character, place, prop, breakdown, script, shotlist, storyboard, shotPrompts, shotRefs, fixes, VIDEO_FIXES, QC, JSON_SCHEMA };
+  window.Prompts = { character, place, prop, breakdown, script, shotlist, storyboard, shotPrompts, shotRefs, assembly, timeline, fixes, VIDEO_FIXES, QC, JSON_SCHEMA };
 })();

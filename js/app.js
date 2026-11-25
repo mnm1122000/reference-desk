@@ -12,8 +12,8 @@
   /* ---------------- state ---------------- */
   const defaults = () => ({
     mode: null, view: 'project',
-    settings: { title: '', logline: '', format: 'luxury ad', brand: '', length: '30 second', audience: '', mood: '', palette: '', aspect: '16:9', film: 'Kodak Vision3 250D', guards: true },
-    story: '', script: '', characters: [], places: [], props: [], shots: [],
+    settings: { title: '', logline: '', format: 'luxury ad', brand: '', length: '30 second', audience: '', mood: '', palette: '', aspect: '16:9', film: 'Kodak Vision3 250D', guards: true, language: '' },
+    story: '', script: '', characters: [], places: [], props: [], shots: [], boards: [],
     sel: { characters: null, places: null, props: null, shots: null },
     done: {}, open: {}, ui: { input: {}, q: {} }
   });
@@ -129,7 +129,7 @@
   /* ---------------- navigation ---------------- */
   const NAV = [
     ['project', 'Project'], ['story', 'Story breakdown'], ['characters', 'Characters'], ['places', 'Places'], ['props', 'Props'],
-    ['script', 'Script and dialogue'], ['shotlist', 'Shotlist'], ['shots', 'Shots'], ['fix', 'Fix library']
+    ['script', 'Script and dialogue'], ['shotlist', 'Shotlist'], ['shots', 'Shots'], ['edit', 'Edit and assembly'], ['fix', 'Fix library']
   ];
   function ring(p, n) {
     const C = 2 * Math.PI * 9;
@@ -138,12 +138,12 @@
   function renderNav() {
     let sum = 0;
     $('#nav').innerHTML = NAV.map(([v, label], i) => {
-      const p = v === 'fix' ? 0 : stepProgress(v); if (v !== 'fix') sum += p;
+      const skip = v === 'fix' || v === 'edit'; const p = skip ? 0 : stepProgress(v); if (!skip) sum += p;
       const c = ASSET(v) || v === 'shots' ? S[v].length : '';
       return `<li><button class="nav-item${S.view === v ? ' is-active' : ''}" data-go="${v}" ${S.view === v ? 'aria-current="page"' : ''}>
         ${ring(p, i)}<span class="nav-label">${label}</span><span class="nav-count">${c || ''}</span></button></li>`;
     }).join('');
-    const pct = Math.round((sum / (NAV.length - 1)) * 100);
+    const pct = Math.round((sum / (NAV.length - 2)) * 100);
     $('#overallPct').textContent = pct + '%';
     $('#overallBar').style.width = pct + '%';
   }
@@ -259,6 +259,7 @@
         ${inp('audience', 'Audience', '25 to 40, style-conscious')}
         ${inp('mood', 'Mood', 'aspirational, playful, quiet confidence')}
         ${inp('palette', 'Color palette', 'warm creams, honey, deep bottle green', true)}
+        ${inp('language', 'Dialogue language and accent', 'natural conversational Malaysian Malay with casual English, Malaysian accent', true)}
         <label class="field" for="s_aspect"><span>Aspect ratio</span>${sel('aspect', ['16:9', '9:16', '4:5', '1:1', '2.39:1'])}</label>
         <label class="field" for="s_film"><span>Film look</span>${sel('film', ['Kodak Vision3 250D', 'Kodak Vision3 500T', 'Kodak Portra 400', 'Fujifilm Eterna 250D', 'Kodak Ektachrome 100'])}</label>
         <label class="switch" for="s_guards"><input type="checkbox" id="s_guards" data-field="guards" data-scope="settings" ${s.guards !== false ? 'checked' : ''}><span class="switch-track"></span>
@@ -285,15 +286,98 @@
   }
 
   function viewStory() {
-    return `${pageHead('01', 'Story breakdown', 'Paste your story, copy the breakdown prompt into Claude or ChatGPT, and paste the answer back. Every character, place, prop and shot is filled in for you.')}
+    return `${pageHead('01', 'Story or brief breakdown', 'Paste a story or a full creative brief, copy the breakdown prompt into Claude or ChatGPT, and paste the answer back. Every character, place, prop and shot is filled in for you, with dialogue, captions, sound and edit notes.')}
     <section class="panel">
-      <label class="field field-wide" for="story"><span>Your story, script or idea</span>
+      <label class="field field-wide" for="story"><span>Your story, script, idea or full creative brief</span>
       <textarea id="story" rows="9" data-field="story" data-scope="root" placeholder="Paste the whole story here. Rough notes are fine.">${esc(S.story)}</textarea></label>
     </section>
     <p class="live">Live prompt</p>
     <div id="prompts">${promptCard(P.breakdown(S), 'story', null)}</div>
     ${importPanel('breakdown', 'Paste the answer', 'Adds every character, place, prop and shot. Nothing already here is deleted.')}
+    ${boardsPanel()}
     ${nextBar('characters', 'Refine characters')}`;
+  }
+
+  function boardsPanel() {
+    const boards = S.boards || [];
+    return `<section class="panel">
+      <div class="panel-head"><h2>Reference boards</h2><p>Storyboards, meme sheets or mood boards. Cut panels out of them and assign each one to a shot as its composition reference.</p></div>
+      <div class="slot" data-slot="boards"><div class="slot-grid boards-grid">
+        ${boards.map((b) => `<figure class="thumb-lg board"><img data-img="${b.img}" alt="${esc(b.name || 'Board')}">
+          <button class="board-cut" data-cut="${b.id}">Cut panels</button>
+          <button class="thumb-x" data-remove-board="${b.id}" aria-label="Remove board">Remove</button></figure>`).join('')}
+        <label class="drop" tabindex="0"><input type="file" accept="image/*" multiple data-upload="boards" hidden><span class="drop-plus">+</span><span>Add a board</span></label>
+      </div></div>
+    </section>`;
+  }
+
+  /* ---------------- board cutter ---------------- */
+  const cut = { board: null, rect: null, shot: null };
+  function openCutter(boardId, shotId) {
+    const b = (S.boards || []).find((x) => x.id === boardId) || (S.boards || [])[0];
+    if (!b) { toast('Add a reference board on the Story page first'); return; }
+    cut.board = b; cut.rect = null;
+    cut.shot = shotId || (S.shots.find((s) => !s.refImg) || S.shots[0] || {}).id || null;
+    const m = document.createElement('div');
+    m.className = 'modal'; m.id = 'cutter';
+    m.innerHTML = `<div class="modal-card" role="dialog" aria-modal="true" aria-label="Cut panels from a board">
+      <header class="modal-head"><div><strong>Cut panels</strong><span>Drag a box around a panel, pick the shot, then assign. Outlined boxes are already assigned.</span></div>
+        <button class="btn btn-ghost" data-closecut="1">Done</button></header>
+      ${(S.boards || []).length > 1 ? `<div class="tabs board-tabs">${S.boards.map((x, i) => `<button class="tab${x.id === b.id ? ' is-active' : ''}" data-cutboard="${x.id}">${esc(x.name || 'Board ' + (i + 1))}</button>`).join('')}</div>` : ''}
+      <div class="crop-stage" id="cropStage"><img id="cropImg" alt="" draggable="false"><div class="crop-marks" id="cropMarks"></div><div class="crop-sel" id="cropSel" hidden></div></div>
+      <div class="row crop-row">
+        <label class="field"><span>Assign to shot</span><select id="cropShot">${S.shots.map((s) => `<option value="${s.id}"${s.id === cut.shot ? ' selected' : ''}>${esc(s.code || s.id)}${s.refImg ? ' (has reference)' : ''}${s.meme ? ' / ' + esc(s.meme) : ''}</option>`).join('')}</select></label>
+        <button class="btn btn-accent" id="cropAssign" disabled>Assign panel</button>
+      </div></div>`;
+    document.body.appendChild(m);
+    document.body.classList.add('has-modal');
+    DB.url(b.img).then((u) => { $('#cropImg').src = u || ''; });
+    drawMarks();
+    const stage = $('#cropStage');
+    let start = null;
+    const pos = (e) => { const r = stage.getBoundingClientRect(); return { x: Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), y: Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)) }; };
+    stage.addEventListener('pointerdown', (e) => { e.preventDefault(); start = pos(e); stage.setPointerCapture(e.pointerId); });
+    stage.addEventListener('pointermove', (e) => {
+      if (!start) return; const p = pos(e);
+      cut.rect = { x: Math.min(start.x, p.x), y: Math.min(start.y, p.y), w: Math.abs(p.x - start.x), h: Math.abs(p.y - start.y) };
+      const sel = $('#cropSel'); sel.hidden = false;
+      Object.assign(sel.style, { left: cut.rect.x * 100 + '%', top: cut.rect.y * 100 + '%', width: cut.rect.w * 100 + '%', height: cut.rect.h * 100 + '%' });
+    });
+    stage.addEventListener('pointerup', () => { start = null; $('#cropAssign').disabled = !(cut.rect && cut.rect.w > 0.02 && cut.rect.h > 0.02); });
+  }
+  function drawMarks() {
+    const box = $('#cropMarks'); if (!box || !cut.board) return;
+    box.innerHTML = S.shots.filter((s) => s.ref && s.ref.board === cut.board.id).map((s) => `<span class="crop-mark" style="left:${s.ref.x * 100}%;top:${s.ref.y * 100}%;width:${s.ref.w * 100}%;height:${s.ref.h * 100}%"><b>${esc(s.code)}</b></span>`).join('');
+  }
+  function closeCutter() { $('#cutter')?.remove(); document.body.classList.remove('has-modal'); render(); }
+  async function cropToImage(boardImg, r) {
+    const blob = await DB.get(boardImg); if (!blob) return null;
+    const bmp = await createImageBitmap(blob);
+    const sx = Math.round(r.x * bmp.width), sy = Math.round(r.y * bmp.height), sw = Math.max(1, Math.round(r.w * bmp.width)), sh = Math.max(1, Math.round(r.h * bmp.height));
+    const c = document.createElement('canvas'); c.width = sw; c.height = sh;
+    c.getContext('2d').drawImage(bmp, sx, sy, sw, sh, 0, 0, sw, sh);
+    const out = await new Promise((res) => c.toBlob(res, 'image/png'));
+    return out ? addImage(out) : null;
+  }
+  async function assignCut() {
+    const shot = S.shots.find((s) => s.id === $('#cropShot').value); if (!shot || !cut.rect) return;
+    if (shot.refImg) DB.del(shot.refImg);
+    shot.ref = { board: cut.board.id, ...cut.rect };
+    shot.refImg = await cropToImage(cut.board.img, cut.rect);
+    save(); drawMarks(); toast(`Panel assigned to ${shot.code}`);
+    const sel = $('#cropShot'); const opt = sel.selectedOptions[0]; if (opt && !opt.textContent.includes('(has reference)')) opt.textContent = opt.textContent.replace(/( \/ .*)?$/, ' (has reference)$1');
+    if (sel.selectedIndex < sel.options.length - 1) sel.selectedIndex += 1;
+    cut.rect = null; $('#cropSel').hidden = true; $('#cropAssign').disabled = true;
+  }
+  async function materializeRefs() {
+    let changed = false;
+    for (const s of S.shots) {
+      if (!s.ref) continue;
+      if (s.refImg && await DB.get(s.refImg)) continue;
+      const b = (S.boards || []).find((x) => x.id === s.ref.board); if (!b) continue;
+      const id = await cropToImage(b.img, s.ref); if (id) { s.refImg = id; changed = true; }
+    }
+    if (changed) { save(); render(); }
   }
 
   function guideCard(kind, sel) {
@@ -424,7 +508,12 @@
           <fieldset><legend>Shot</legend><div class="form-grid">
             ${f('code', 'Shot code', 'SC01_SH01')}${f('scene', 'Scene', 'SC01')}
             <label class="field"><span>Type</span><select data-field="type" data-scope="shots" data-rerender="1">${SHOT_TYPES.map(([v, l]) => `<option value="${v}"${(sel.type || 'action') === v ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
-            ${f('duration', 'Duration (seconds)', '6')}
+            ${f('duration', 'Clip length to generate (s)', '5')}
+            ${f('screen', 'Screen time in the edit (s)', '2.5')}
+            <label class="field"><span>Style</span><select data-field="style" data-scope="shots"><option value="comedy"${sel.style !== 'premium' ? ' selected' : ''}>Natural / comedy (handheld)</option><option value="premium"${sel.style === 'premium' ? ' selected' : ''}>Premium / product (smooth)</option></select></label>
+            <label class="field"><span>Wardrobe</span><select data-field="outfit" data-scope="shots"><option value="main"${sel.outfit !== 'second' ? ' selected' : ''}>Main outfit</option><option value="second"${sel.outfit === 'second' ? ' selected' : ''}>Second outfit</option></select></label>
+            <label class="field"><span>Speed</span><select data-field="speed" data-scope="shots"><option value="real"${sel.speed !== 'slow' ? ' selected' : ''}>Real-time</option><option value="slow"${sel.speed === 'slow' ? ' selected' : ''}>Slow motion</option></select></label>
+            ${f('meme', 'Reference format (optional)', 'Distracted Boyfriend')}
           </div></fieldset>
           <fieldset><legend>In the shot</legend>
             <div class="chips"><span class="chips-label">Characters</span>${checks(S.characters, sel.charIds, 'charIds')}</div>
@@ -449,7 +538,18 @@
             ${f('speaker', 'Speaker (character name)', 'Maya')}${f('delivery', 'Delivery', 'dry, quiet, slightly amused')}
             ${f('line', 'Line (under 8 seconds)', 'You were going to ask me that, weren\'t you?', true)}
           </div></fieldset>` : ''}
-          <div class="form-grid">${f('transition', 'Transition into the next shot', 'match cut through the sunglasses lens', true)}</div>
+          <fieldset><legend>Edit (added after generation, never generated)</legend><div class="form-grid">
+            ${f('onscreen', 'On-screen text / captions', 'Aku nampak semuanya.', true)}
+            ${f('vo', 'Voice-over', 'Whatever your style...', true)}
+            ${f('sfx', 'Sound effects', 'record scratch on the freeze', true)}
+            ${f('music', 'Music cue', 'comedic instrumental continues', true)}
+            ${f('edit', 'Edit notes', 'freeze last frame 0.6 s, crash zoom 150% on his face', true)}
+            ${f('transition', 'Transition into the next shot', 'hard cut', true)}
+          </div></fieldset>
+        </section>
+        <section class="panel">
+          ${imageSlot('Composition reference', 'A storyboard panel or meme to copy the framing and poses from. It is attached last to the start-frame prompt.', sel.refImg ? [sel.refImg] : [], 'refImg', false)}
+          ${(S.boards || []).length ? `<div class="row"><button class="btn btn-ghost" data-cutfor="${sel.id}">Cut from a board</button></div>` : ''}
         </section>
         <section class="panel">
           ${imageSlot('Approved start frame', 'The start frame you picked. The video prompt uses it.', sel.frame ? [sel.frame] : [], 'frame', false)}
@@ -458,11 +558,28 @@
       </div>
       <div class="split-prompts"><p class="live">Live prompts</p><div id="prompts">${promptList(P.shotPrompts(S, sel, next), 'shots', sel.id)}</div></div>
     </div>
+    ${nextBar('edit', 'Plan the edit')}`;
+  }
+
+  function viewEdit() {
+    const rows = P.timeline(S);
+    const total = rows.length ? rows[rows.length - 1].end : 0;
+    const fmt = (x) => `${Math.floor(x / 60)}:${(x % 60).toFixed(1).padStart(4, '0')}`;
+    const width = (r) => total ? (r.len / total) * 100 : 0;
+    const bar = rows.map((r) => `<button class="tl-seg${r.s.style === 'premium' ? ' is-premium' : ''}" style="flex-basis:${width(r)}%" data-openshot="${r.s.id}" title="${esc(r.s.code)}: ${esc(r.s.moment || '')}"><span>${esc((r.s.code || '').replace(/^SC\d+_/, ''))}</span></button>`).join('');
+    const table = rows.map((r) => `<tr data-openshot="${r.s.id}" tabindex="0"><td class="mono">${fmt(r.start)}</td><td class="mono">${esc(r.s.code)}</td><td>${r.len}s</td><td class="t-moment">${esc(r.s.onscreen || (r.s.line ? '"' + r.s.line + '"' : ''))}</td><td class="t-moment">${esc(r.s.sfx || '')}</td><td class="t-moment">${esc(r.s.edit || '')}</td></tr>`).join('');
+    return `${pageHead('08', 'Edit and assembly', 'Everything you need to cut the generated clips into one video: the timeline, subtitles, sound cues, product placement and the continuity guide.')}
+    <section class="panel">
+      <div class="panel-head"><h2>Timeline</h2><p>${rows.length} shots, ${fmt(total)} total. Lime blocks are premium shots. Click a block to open the shot.</p></div>
+      ${rows.length ? `<div class="tl">${bar}</div>
+      <div class="table-wrap"><table class="shots"><thead><tr><th>In</th><th>Shot</th><th>Len</th><th>Text / dialogue</th><th>SFX</th><th>Edit</th></tr></thead><tbody>${table}</tbody></table></div>` : '<p class="muted">No shots yet.</p>'}
+    </section>
+    <div id="prompts">${promptList(P.assembly(S), 'edit', null)}</div>
     ${nextBar('fix', 'Fix library')}`;
   }
 
   function viewFix() {
-    return `${pageHead('08', 'Fix library', 'When a result still looks generated. With quality guards on, these rules are already in every prompt, and these prompts repair what slips through.')}
+    return `${pageHead('09', 'Fix library', 'When a result still looks generated. With quality guards on, these rules are already in every prompt, and these prompts repair what slips through.')}
     <div id="prompts">${promptList(P.fixes(S), 'fix', null)}</div>
     <section class="panel">
       <div class="panel-head"><h2>Video problems</h2><p>What to change in the prompt.</p></div>
@@ -482,7 +599,7 @@
     renderNav();
     const v = S.view;
     $('#view').innerHTML = v === 'project' ? viewProject() : v === 'story' ? viewStory() : ASSET(v) ? viewAssets(v)
-      : v === 'script' ? viewScript() : v === 'shotlist' ? viewShotlist() : v === 'shots' ? viewShots() : viewFix();
+      : v === 'script' ? viewScript() : v === 'shotlist' ? viewShotlist() : v === 'shots' ? viewShots() : v === 'edit' ? viewEdit() : viewFix();
     hydrate($('#view'));
     $('#projTitle').textContent = S.settings.title || 'Untitled project';
     if (v === 'project') startViewfinder();
@@ -507,6 +624,7 @@
     else if (v === 'script') html = promptList(P.script(S), 'script', null);
     else if (v === 'shotlist') html = promptCard(P.shotlist(S)[0], 'shotlist', null);
     else if (v === 'shots') { const i = S.shots.findIndex((x) => x.id === S.sel.shots); if (i > -1) html = promptList(P.shotPrompts(S, S.shots[i], S.shots[i + 1]), 'shots', S.shots[i].id); }
+    else if (v === 'edit') html = promptList(P.assembly(S), 'edit', null);
     else return;
     const scroll = box.parentElement.scrollTop;
     box.innerHTML = html; box.querySelectorAll('.prompt').forEach((el) => (el.style.animation = 'none'));
@@ -555,8 +673,10 @@
   const byName = (arr, n) => arr.find((x) => (x.name || '').trim().toLowerCase() === String(n || '').trim().toLowerCase());
   function cleanShot(o, i) {
     const s = { id: uid(), frame: null };
-    ['code', 'scene', 'type', 'duration', 'size', 'angle', 'lens', 'aperture', 'move', 'moment', 'blocking', 'beats', 'physics', 'light', 'speaker', 'line', 'delivery', 'audio', 'transition'].forEach((k) => { if (o[k] != null) s[k] = String(o[k]); });
+    ['code', 'scene', 'type', 'style', 'speed', 'outfit', 'duration', 'screen', 'size', 'angle', 'lens', 'aperture', 'move', 'meme', 'moment', 'blocking', 'beats', 'physics', 'light', 'speaker', 'line', 'delivery', 'audio', 'onscreen', 'vo', 'sfx', 'music', 'edit', 'transition'].forEach((k) => { if (o[k] != null) s[k] = String(o[k]); });
     if (!SHOT_TYPES.some((t) => t[0] === s.type)) s.type = 'action';
+    s.style = s.style === 'premium' ? 'premium' : 'comedy';
+    s.speed = /slow/i.test(s.speed || '') ? 'slow' : 'real';
     if (s.lens && /^\d+$/.test(s.lens.trim())) s.lens = s.lens.trim() + 'mm';
     s.aperture = (s.aperture || '').replace(/^f\/?/i, '');
     s.code = s.code || `SC01_SH${String(i + 1).padStart(2, '0')}`;
@@ -571,7 +691,7 @@
     try {
       const d = parseJSON(ta.value);
       const n = { characters: 0, places: 0, props: 0, shots: 0 };
-      if (d.project) ['title', 'logline', 'format', 'length', 'mood', 'palette'].forEach((k) => { if (d.project[k] && !S.settings[k]) S.settings[k] = String(d.project[k]); });
+      if (d.project) ['title', 'logline', 'format', 'length', 'mood', 'palette', 'aspect', 'language'].forEach((k) => { if (d.project[k] && !S.settings[k]) S.settings[k] = String(d.project[k]); });
       ['characters', 'places', 'props'].forEach((k) => (d[k] || []).forEach((o) => {
         const exist = byName(S[k], o.name);
         if (exist) { const c = cleanAsset(k, o); Object.keys(c).forEach((f) => { if (!['id', 'photos', 'sheet'].includes(f) && c[f]) exist[f] = c[f]; }); }
@@ -659,9 +779,20 @@
     if (d.removeImg) {
       const item = current(S.view); if (!item) return;
       if (d.slot === 'photos') item.photos = (item.photos || []).filter((x) => x !== d.removeImg); else item[d.slot] = null;
+      if (d.slot === 'refImg') delete item.ref;
       DB.del(d.removeImg); save(); render(); return;
     }
     if (d.import) { doImport(d.import); return; }
+    if (d.cut) { openCutter(d.cut); return; }
+    if (d.cutfor) { openCutter(((S.shots.find((s) => s.id === d.cutfor) || {}).ref || {}).board, d.cutfor); return; }
+    if (d.cutboard) { $('#cutter')?.remove(); openCutter(d.cutboard, $('#cropShot') && $('#cropShot').value); return; }
+    if (d.closecut) { closeCutter(); return; }
+    if (t.id === 'cropAssign') { assignCut(); return; }
+    if (d.removeBoard) {
+      if (!confirm('Remove this board? Panels already cut from it stay on their shots.')) return;
+      const b = S.boards.find((x) => x.id === d.removeBoard); if (b) DB.del(b.img);
+      S.boards = S.boards.filter((x) => x.id !== d.removeBoard); save(); render(); return;
+    }
     if (t.id === 'menuBtn') { const o = document.body.classList.toggle('menu-open'); t.setAttribute('aria-expanded', o); return; }
     if (t.id === 'exportBtn') return exportProject();
     if (t.id === 'importBtn') return $('#importFile').click();
@@ -695,6 +826,7 @@
 
   document.addEventListener('keydown', (e) => {
     const el = e.target;
+    if (e.key === 'Escape' && $('#cutter')) { closeCutter(); return; }
     if (el.id === 'gq' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); qStep(1); return; }
     if ($('.guide .choices') && /^[1-9]$/.test(e.key) && !/INPUT|TEXTAREA|SELECT/.test(el.tagName)) { const b = $$('.guide .choice')[Number(e.key) - 1]; if (b) { b.click(); return; } }
     if ((e.key === 'Enter' || e.key === ' ') && el.classList && el.classList.contains('drop')) { e.preventDefault(); el.querySelector('input').click(); return; }
@@ -703,9 +835,16 @@
 
   document.addEventListener('change', async (e) => {
     const el = e.target;
+    if (el.dataset.upload === 'boards') { await addBoards([...el.files].filter((f) => f.type.startsWith('image/'))); return; }
     if (el.dataset.upload) { const item = current(S.view); if (!item) return; await attachFiles(item, el.dataset.upload, [...el.files].filter((f) => f.type.startsWith('image/'))); }
     if (el.id === 'importFile' && el.files[0]) importProject(el.files[0]);
   });
+  async function addBoards(files) {
+    if (!files.length) return;
+    S.boards = S.boards || [];
+    for (const f of files) S.boards.push({ id: 'b_' + uid(), name: f.name.replace(/.[^.]+$/, ''), img: await addImage(f) });
+    save(); render(); toast('Board added. Click "Cut panels" to slice it.');
+  }
   async function attachFiles(item, slot, files) {
     if (!files.length) return;
     for (const f of files) {
@@ -722,6 +861,7 @@
   document.addEventListener('dragleave', (e) => { const s = e.target.closest('.slot'); if (s && !s.contains(e.relatedTarget)) s.classList.remove('is-over'); });
   document.addEventListener('drop', (e) => {
     const s = e.target.closest('.slot'); if (!s) return; e.preventDefault(); s.classList.remove('is-over');
+    if (s.dataset.slot === 'boards') { addBoards([...e.dataTransfer.files].filter((f) => f.type.startsWith('image/'))); return; }
     const item = current(S.view); if (!item) return;
     attachFiles(item, s.dataset.slot, [...e.dataTransfer.files].filter((f) => f.type.startsWith('image/')));
   });
@@ -731,7 +871,8 @@
   async function exportProject() {
     const ids = new Set();
     ['characters', 'places', 'props'].forEach((k) => S[k].forEach((x) => { (x.photos || []).forEach((i) => ids.add(i)); ['sheet', 'map'].forEach((f) => x[f] && ids.add(x[f])); }));
-    S.shots.forEach((s) => s.frame && ids.add(s.frame));
+    S.shots.forEach((s) => { if (s.frame) ids.add(s.frame); if (s.refImg) ids.add(s.refImg); });
+    (S.boards || []).forEach((b) => ids.add(b.img));
     const images = {};
     for (const id of ids) { const b = await DB.get(id); if (b) images[id] = await blobToData(b); }
     const blob = new Blob([JSON.stringify({ app: 'reference-desk', version: 1, state: S, images })], { type: 'application/json' });
@@ -744,10 +885,10 @@
     try {
       const d = JSON.parse(await file.text()); if (!d.state) throw new Error('bad');
       for (const [id, url] of Object.entries(d.images || {})) { const b = await (await fetch(url)).blob(); await DB.put(id, b); }
-      S = merge(d.state); save(); render(); toast('Project loaded');
+      S = merge(d.state); save(); render(); toast('Project loaded'); materializeRefs();
     } catch (e) { toast('Could not read that project file'); }
     $('#importFile').value = '';
   }
 
-  DB.open().then(render);
+  DB.open().then(() => { render(); materializeRefs(); });
 })();
