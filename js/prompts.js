@@ -53,7 +53,8 @@
       'Lip-sync: mouth shapes match every syllable. Teeth and tongue stay consistent, the jaw moves naturally, and there is no mouth movement outside the spoken words.',
       'Only the named speaker talks. Any listener keeps their mouth closed.',
       'The face stays lit and in focus, and the head stays between front and three-quarter angle.',
-      'Performance is understated and human: a breath before speaking, natural blinks, micro head movements. No exaggerated acting.'
+      'Performance is understated and human: a breath before speaking, natural blinks, micro head movements. No exaggerated acting.',
+      'Pace: speech rides on top of action. Each line begins while its movement is still happening. No dead air, no long silent pauses between lines.'
     ]
   };
 
@@ -83,109 +84,124 @@
       `Hair: ${F(c.hair, 'HAIR COLOR, LENGTH, TEXTURE, STYLE')}.`
     );
   }
+  const tag = (c, suffix) => '@' + (t(c.name) || 'Character').replace(/[^\w]+/g, '') + (suffix || '');
+  const ERASE = 'Erase the face on the full-body FRONT view: leave a smooth, blank, softly blurred oval in a muted skin tone, with no eyes, nose or mouth. The hair stays visible around it. The portrait is the ONLY face reference in the sheet, so the video model can never take the face from the small full-body figure.';
+  const SHEET_LAYOUT = (bg) => L(
+    'Layout: ONE wide 16:9 image with THREE panels of the same person on one continuous seamless backdrop, with no gutters, borders, frames, labels or text.',
+    'Panel 1 (left half, first figure): FULL BODY, FRONT VIEW, from above the head to below the shoes with a little floor in frame, FACE ERASED (see below).',
+    'Panel 2 (left half, second figure): FULL BODY, BACK VIEW, the same distance and scale as panel 1, turned exactly 180 degrees, showing the back of the hair, clothing and shoes. Both pairs of feet on the same ground line.',
+    'Panel 3 (right half): one LARGE HEAD-AND-SHOULDERS PORTRAIT filling the full height of the right half, cropped at the upper chest so the whole neck shows, facing the camera, neutral expression, direct gaze, sharp eyes.',
+    ERASE,
+    'Pose: neutral standing pose facing the camera squarely, weight even on both feet, feet hip-width apart, shoulders level, arms relaxed at the sides, hands open and EMPTY. The back view is the same stance turned 180 degrees.',
+    `Background: ${bg}, floor blending into the wall, a soft contact shadow under the feet. Nothing else in frame: no studio equipment, softbox, stand, lamp or cable anywhere.`,
+    'Light: soft, even, neutral frontal light with gentle falloff, exposed for skin so it holds full detail, neutral white balance.',
+    'Camera: the full-body panels at eye level with a standard normal lens about 3 m away, no distortion. The portrait with a short telephoto portrait lens at eye level.'
+  );
 
   function character(c, S, all) {
     const name = F(c.name, 'NAME');
     const photos = c.photos || [];
     const others = (all || []).filter((x) => x.id !== c.id && t(x.name));
     const out = [];
+    const world = t(S.settings.palette) || t(S.settings.film) ? `Match the look of the show: ${film(S)}${t(S.settings.palette) ? ', palette ' + t(S.settings.palette) : ''}, so the character already belongs to its world.` : '';
 
     out.push({
-      id: 'C0', tag: 'C0', title: 'Base portrait (only if you have no photo)',
-      note: 'Skip this if you already uploaded a real face photo. Otherwise, generate this first and save the best result as this character\'s source photo.',
+      id: 'C0', tag: 'C0', title: `Face portrait (${tag(c, 'Face')}), only if you have no photo`,
+      note: 'Generate about 6 options and pick one. Reject washed-out faces and plastic, symmetrical "AI faces". Save the winner as this character\'s first source photo.',
       attach: [],
       text: L(
-        `Photorealistic head-and-shoulders portrait of ${name}, a ${charDesc(c)}.`,
+        `A straight-on, tightly framed head-and-shoulders portrait photograph of ${name}, a ${charDesc(c)}.`,
         charFace(c),
-        'Expression: neutral and relaxed, mouth closed, looking straight into the lens.',
-        'Wearing a plain charcoal crew-neck t-shirt.',
-        `Background: ${GREY}, evenly lit.`,
-        'Lighting: large soft key light from camera-left at 45 degrees, gentle fill from the right, soft natural shadows under the chin and nose.',
-        'Camera: 85mm lens, f/4, eye level, 1.5 m away, sharp focus on the eyes.',
-        'Aspect ratio: 4:5.',
+        'Real skin with visible pores, fine lines and natural unevenness. Neutral, calm expression, mouth closed, direct gaze into the lens.',
+        'Wearing a plain dark crew-neck top.',
+        'Lighting: one large diffused softbox 45 degrees to the side and slightly above, fill from the other side two stops down, soft shadow under the nose and jaw, no harsh highlights, no dramatic contrast.',
+        'Background: plain neutral grey, softly out of focus.',
+        'Camera: 105mm lens, f/4, about 3 m away, eye level, sharp focus on the eyes. Aspect ratio 4:5.',
+        world,
         guards(S, G.person)
       )
     });
 
+    out.push({
+      id: 'C0b', tag: 'C0b', title: `Outfit reference (${tag(c, 'Outfit')})`,
+      note: 'Shows only the clothes, face out of frame, so the outfit never brings a second face into the sheet. Skip it if you already have a clear outfit photo.',
+      attach: attachList([photos[1] ? { label: 'Outfit photo (optional)', img: photos[1] } : null]),
+      text: L(
+        `A straight-on fashion photograph of the outfit only, worn by a ${t(c.age) ? c.age + '-year-old ' : ''}${F(c.gender, 'PERSON')}, framed from the shoulders to the feet with the face out of frame, against a plain warm grey wall.`,
+        `Outfit: ${F(c.outfit, 'EVERY GARMENT WITH COLOR, FABRIC, FIT AND LENGTH, PLUS SHOES')}.`,
+        t(c.details) ? `Accessories: ${t(c.details)}.` : '',
+        'Hands empty: no bag, phone, cards or props. Shoes fully visible with space below them.',
+        'Bright, direct light like an on-camera flash, crisp fabric texture, a faint shadow behind the figure, deep focus.',
+        world,
+        guards(S, G.person.slice(1))
+      )
+    });
+
+    if (t(c.details)) {
+      out.push({
+        id: 'C0c', tag: 'C0c', title: `Detail close-up (${tag(c, 'Details')})`,
+        note: 'Small things like jewellery, glasses or a watch come out wrong unless they get their own close-up. Attach it when you build the sheet.',
+        attach: [],
+        text: L(
+          `A straight-on, tight close-up photograph of these details only: ${t(c.details)}, worn with ${F(c.outfit, 'THE OUTFIT')}.`,
+          'Framed at chest and neck height (or hands and wrists for rings and watches), no face in frame.',
+          'Balanced, even light that makes metal glint and shows the fabric texture, sharp focus throughout.',
+          guards(S, G.person.slice(1, 4))
+        )
+      });
+    }
+
     const a1 = attachList([
-      { label: 'Face photo (front, clear)', img: photos[0] },
-      photos[1] ? { label: 'Full body / outfit photo', img: photos[1] } : null
+      { label: `Face (${tag(c, 'Face')})`, img: photos[0] },
+      { label: `Outfit (${tag(c, 'Outfit')})`, img: photos[1] || null },
+      t(c.details) ? { label: `Details (${tag(c, 'Details')})`, img: photos[2] || null } : null
     ]);
     out.push({
-      id: 'C1', tag: 'C1', title: 'Master character sheet (3 panels)', required: true,
-      note: 'The most important image in the project. Generate 2 to 4 versions, keep the best one and upload it below as the finished sheet.',
+      id: 'C1', tag: 'C1', title: `Master character sheet (${tag(c)}), face erased on the front view`, required: true,
+      note: 'Use a model that is strong with references (GPT Image, Nano Banana, Seedream). Generate 2 to 4, keep the best, and upload it below as the finished sheet. Check that the front figure really has no face.',
       attach: a1,
       text: L(
-        `Create a professional character reference sheet of the exact same person shown in Image 1${photos[1] ? ', wearing the outfit from Image 2' : ''}.`,
-        `Character: ${name}, a ${charDesc(c)}.`,
+        `Make a character sheet of ${name}.`,
+        'Face and hair: take the face exactly from Image 1 (facial structure, eyes, brows, nose, lips, skin tone) and the hair colour and texture from Image 1. Do not beautify, idealise or change the face.',
         charFace(c),
-        `Outfit: ${F(c.outfit, 'OUTFIT: TOP, BOTTOM, SHOES, ACCESSORIES WITH COLORS AND MATERIALS')}.`,
-        'Preserve their identity exactly. Do not beautify or change the face.',
+        `Outfit: take only the clothing from Image 2: ${F(c.outfit, 'OUTFIT')}, with the same colours, fabrics, fit and length, refitted to this body. Ignore any bag, cards, props, background or face in that reference.`,
+        t(c.details) ? `Details: ${t(c.details)}${a1.length > 2 ? ', exactly as in Image 3' : ''}.` : '',
+        `Body: ${charDesc(c)}. The same proportions in all three panels.`,
         ' ',
-        `Layout: one single wide image (16:9) split into 3 clean side-by-side panels, all on the same ${GREY}. Even spacing, no borders, no text, no labels.`,
-        'Panel 1 (left): FRONT FACE CLOSE-UP. Head and shoulders, straight-on, neutral expression, mouth closed, eyes to the lens. 85mm look, sharp eyes, skin pores and hair strands.',
-        'Panel 2 (center): FRONT FULL BODY. Head to toe, relaxed neutral A-pose, arms slightly away from the body, hands open and empty, feet shoulder-width apart. Shoes fully visible.',
-        'Panel 3 (right): BACK FULL BODY. Same person, head to toe, facing directly away from the camera, same pose, showing the back of the hairstyle, clothing and shoes.',
-        ' ',
-        'Lighting: identical in all panels. Soft even studio light from a large softbox front-left, gentle fill, soft contact shadow under the feet. Neutral white balance.',
-        'Camera: full-frame, 50mm for the full-body panels, f/8 so everything is sharp, eye level, no distortion.',
-        'Realism: fabric shows creases, seams, stitching and weave. Natural hair with flyaways.',
-        'Consistency: same person, same outfit, same proportions and same height in every panel.',
+        SHEET_LAYOUT(`plain seamless neutral mid-grey studio backdrop (#808080 to #8D8F91), never white or black`),
+        world,
         c.role === 'secondary' && others.length ? `This person must look clearly different from ${others.map((o) => o.name).join(', ')}.` : '',
         guards(S, G.person)
       )
     });
 
-    const sheetRef = attachList([{ label: 'Finished C1 master sheet', img: c.sheet }]);
+    const sheetRef = attachList([{ label: `Finished C1 sheet (${tag(c)})`, img: c.sheet }]);
     out.push({
-      id: 'C2', tag: 'C2', title: 'Turnaround sheet (5 angles)',
-      note: 'Recommended when the camera moves around the character or there is action.',
+      id: 'C4', tag: 'C4', title: `Second look by editing the sheet (${tag(c, 'V2')})`,
+      note: t(c.outfit2) ? 'Edit the existing sheet. Never regenerate from scratch, or the face will change.' : 'Fill in "Second look" to use this prompt.',
       attach: sheetRef,
       text: L(
-        `Using the exact character from Image 1 (${name}: same face, hair, body proportions and outfit), create a full-body turnaround reference sheet.`,
-        `Layout: one wide image, 5 panels in a single row, ${GREY}, same scale and same floor line in every panel, no text.`,
-        'Panel 1: front view, 0 degrees.',
-        'Panel 2: three-quarter front, turned 45 degrees to the right.',
-        'Panel 3: side profile, 90 degrees, facing right.',
-        'Panel 4: three-quarter back, 135 degrees.',
-        'Panel 5: back view, 180 degrees.',
-        'Pose: identical relaxed A-pose in all panels, hands empty, neutral expression.',
-        'Lighting: identical soft even studio light, soft contact shadows, neutral color.',
-        'Camera: eye level, 50mm, f/8, no perspective distortion, whole body in frame with small margins.',
+        `Edit Image 1 (${name}'s character sheet). Change ONLY this: ${F(c.outfit2, 'THE CHANGE, e.g. hair down below the shoulders and no glasses, or a new outfit with colours and fabrics')}.`,
+        'Keep the face, body proportions, grey backdrop, light, colour grade and three-panel layout exactly the same, with the face STILL ERASED on the full-body front view.',
+        'Any new clothes fit realistically, with natural drape, gravity and creases.',
         guards(S, G.person)
       )
     });
 
     out.push({
-      id: 'C3', tag: 'C3', title: 'Expression and face-angle sheet (3x3)',
-      note: 'Needed for dialogue, close-ups and emotional beats.',
+      id: 'C3', tag: 'C3', title: 'Expression sheet (for dialogue close-ups)',
+      note: 'Optional. Attach it only for close-up dialogue shots, never together with a different face image.',
       attach: sheetRef,
       text: L(
-        `Create a facial reference sheet of the exact same person from Image 1 (${name}). Identity, skin texture, hairstyle and hair color stay identical.`,
-        `Layout: a 3x3 grid of head-and-shoulders close-ups, ${GREY}, identical soft studio lighting in every cell, no text, no borders.`,
-        'Row 1 (neutral): left profile 90 degrees / three-quarter left 45 degrees / front.',
-        'Row 2 (neutral): three-quarter right 45 degrees / right profile 90 degrees / looking slightly down, head tilted.',
-        `Row 3 (front, expressions): genuine smile with teeth and eye crinkles / mid-sentence, mouth half open / ${F(c.emotion, 'KEY EMOTION IN THE STORY')}.`,
-        'Camera: 85mm, f/5.6, eye level, sharp eyes.',
-        'Expressions are natural, with real muscle movement and wrinkles. Nothing cartoonish.',
-        guards(S, G.person)
-      )
-    });
-
-    out.push({
-      id: 'C4', tag: 'C4', title: 'Outfit variant sheet',
-      note: t(c.outfit2) ? 'Use this when the character changes clothes in the story.' : 'Fill in "Second outfit" to use this prompt.',
-      attach: attachList([{ label: 'Finished C1 master sheet', img: c.sheet }, { label: 'New outfit photo (optional)', img: null }]),
-      text: L(
-        `Keep the exact same person from Image 1 (${name}): identical face, hair, skin tone, body shape and height.`,
-        `Change ONLY the clothing to: ${F(c.outfit2, 'SECOND OUTFIT WITH MATERIALS AND COLORS')}${' (or the outfit shown in Image 2, if provided)'}.`,
-        `Same 3-panel layout as Image 1: front face close-up, front full body, back full body, on the same ${GREY}, identical lighting.`,
-        'The clothes fit realistically, with natural drape, gravity, creases at the elbows and knees, visible weave, seams and buttons.',
+        `From the portrait in Image 1 (${name}), create a 3x2 grid of head-and-shoulders close-ups of the exact same face, on the same grey backdrop with the same soft light, no text and no borders.`,
+        `Expressions: neutral / genuine smile with eye crinkles / mid-sentence, mouth half open / suspicious side-eye / surprised / ${F(c.emotion, 'KEY EMOTION IN THE STORY')}.`,
+        'All facing the camera or a slight three-quarter turn. Natural muscle movement, nothing cartoonish. Identity, skin texture and hair identical in every cell.',
         guards(S, G.person)
       )
     });
     return out;
   }
+
 
   /* ================= PLACE ================= */
   function placeLight(p) {
@@ -198,7 +214,7 @@
     const out = [];
     out.push({
       id: 'P1', tag: 'P1', title: 'Master location sheet (2x2 angles)', required: true,
-      note: 'A place has no grey background, because the place is the background. It is locked with fixed angles, an empty set and one light direction.',
+      note: 'A place has no grey background, because the place is the background. Panel 1 is the key image: a three-quarter wide where the whole layout reads in one frame. A straight-on view looks nice, but on other angles the model has to guess the rest of the room.',
       attach: attachList([{ label: 'Location photo', img: photos[0] }, photos[1] ? { label: 'Second location photo', img: photos[1] } : null]),
       text: L(
         `Create a professional location reference sheet of ${photos[0] ? 'the exact place shown in Image 1' : 'this place'}: ${name}, ${F(p.description, 'SHORT DESCRIPTION OF THE PLACE')}.`,
@@ -234,12 +250,14 @@
       note: 'Attach the map image in the chat.',
       attach: attachList([{ label: 'Layout map', img: p.map }]),
       text: L(
-        `Here is the top-down layout map of my location "${name}". Label it as a production map:`,
-        '1. Give every key object a short name and position (for example "Window W1, north wall, left side").',
-        `2. Mark the main light direction (${placeLight(p)}).`,
-        '3. Suggest 5 camera positions (C1 to C5) with lens size, height and what each one sees.',
-        '4. Note the 180-degree line for a scene where two people face each other here.',
-        'I will use this to keep continuity across all shots.'
+        `Here is the top-down layout map of my location "${name}". Turn it into a production LOCATION MAP that I can paste into every shot prompt:`,
+        '1. Use a compass (north, east, south, west) and say what stands on each wall and side.',
+        '2. Give every key object a short name and position (for example "the white table, south end").',
+        `3. Mark the main light (${placeLight(p)}) and which side it lights.`,
+        t(p.layout) ? `4. Place the action like this: ${t(p.layout)}. Give distances in metres between people and marks.` : '4. Mark where each character sits, stands or walks, with distances in metres.',
+        '5. Draw the action line and put every camera on ONE side of it. State who is screen-left, who is screen-right and which way each person looks.',
+        '6. Suggest 4 camera setups: a 47-degree wide, a 29-degree close-up for each main character, and one low or reverse angle, with distance and height.',
+        'Reply with a compact LOCATION MAP block of 6 to 10 lines.'
       )
     });
     out.push({
@@ -339,11 +357,11 @@
     return `a ${F(s.length, 'LENGTH')} ${F(s.format, 'FORMAT')}${t(s.brand) ? ' for ' + t(s.brand) : ''}, aspect ratio ${aspect(S)}`;
   }
 
-  const SHOT_SCHEMA = '{ "code": "SC01_SH01", "scene": "SC01", "type": "action|dialogue|broll|transition", "style": "comedy|premium", "speed": "real|slow", "duration": 5, "screen": 2.5, "size": "WS|MS|MCU|CU|ECU|Insert", "angle": "", "lens": "50mm", "aperture": "2", "move": "", "characters": ["exact name"], "place": "exact name", "props": ["exact name"], "meme": "", "moment": "", "blocking": "", "beats": "0-2s: ...\\n2-4s: ...", "physics": "", "light": "", "speaker": "", "line": "", "delivery": "", "audio": "", "onscreen": "", "vo": "", "sfx": "", "music": "", "edit": "", "transition": "" }';
+  const SHOT_SCHEMA = '{ "code": "SC01_SH01", "scene": "SC01", "type": "action|dialogue|broll|transition", "style": "comedy|premium", "speed": "real|slow", "outfit": "main|second", "duration": 5, "screen": 2.5, "size": "WS|MS|MCU|CU|ECU|Insert", "angle": "", "lens": "50mm", "aperture": "2", "move": "", "characters": ["exact name"], "place": "exact name", "props": ["exact name"], "meme": "", "moment": "", "blocking": "", "beats": "0-2s: ...\\n2-4s: ...", "acting": "DIRECTION / MOTIVE / GOAL / OBSTACLE / TACTIC", "physics": "", "light": "", "speaker": "", "line": "", "delivery": "", "audio": "", "onscreen": "", "vo": "", "sfx": "", "music": "", "edit": "", "transition": "" }';
   const JSON_SCHEMA = `{
   "project": { "title": "", "logline": "", "format": "", "length": "", "mood": "", "palette": "", "aspect": "16:9|9:16|4:5|1:1", "language": "" },
-  "characters": [ { "name": "", "role": "main|secondary", "age": "", "gender": "", "ethnicity": "", "height": "", "build": "", "faceShape": "", "eyes": "", "hair": "", "features": "", "outfit": "", "outfit2": "", "emotion": "", "voice": "" } ],
-  "places": [ { "name": "", "kind": "interior|exterior", "description": "", "time": "", "lightSource": "", "lightDir": "", "mainArea": "", "materials": "", "livedIn": "", "weather": "", "variant": "" } ],
+  "characters": [ { "name": "", "role": "main|secondary", "age": "", "gender": "", "ethnicity": "", "height": "", "build": "", "faceShape": "", "eyes": "", "hair": "", "features": "", "details": "", "outfit": "", "outfit2": "", "want": "", "emotion": "", "voice": "" } ],
+  "places": [ { "name": "", "kind": "interior|exterior", "description": "", "time": "", "lightSource": "", "lightDir": "", "mainArea": "", "materials": "", "livedIn": "", "weather": "", "variant": "", "layout": "compass map: what is on each side, who stands where, camera side" } ],
   "props": [ { "name": "", "what": "", "size": "", "materials": "", "colors": "", "logoText": "", "detail": "", "wearable": "yes|no", "usage": "", "scaleObject": "", "surface": "" } ],
   "shots": [ ${SHOT_SCHEMA} ]
 }`;
@@ -356,6 +374,8 @@
     '- style = comedy for sketch and meme shots (handheld, natural light), premium for product and brand shots (controlled studio light, smooth slider moves). speed = slow only for slow-motion product moments such as spray mist.',
     '- Captions, meme labels, subtitles, thought bubbles, logos, end cards and calls to action never go inside the generated shot. Put them in onscreen or edit.',
     '- Freeze frames, crash zooms and punch-ins are edit effects: put them in edit, not in move.',
+    '- Story: open on the loudest moment (hook), keep an emotional swing every 20 to 30 seconds, add one unexpected escalation, and end one beat before the answer. Write an acting task (direction, motive, goal, obstacle, tactic) for every character in every shot, and cut to the key reactions.',
+    '- Voices: describe each accent by how it sounds and keep it identical in every shot. outfit = second when a character has switched to their second look.',
     '- Product truth: never invent product names, bottle designs, claims, notes, prices, promotions or links. Where the brief is unsure, write [VERIFY: ...].'
   ];
 
@@ -388,7 +408,49 @@
 
   function script(S) {
     const sum = assetSummary(S);
+    const story = t(S.story) && !/already broken down/i.test(S.story) ? t(S.story) : '';
+    const castLines = S.characters.length ? S.characters.map((c) => `- ${c.name || 'unnamed'} (${[c.age && c.age + ' y/o', c.role === 'secondary' ? 'secondary' : 'main'].filter(Boolean).join(', ')})${t(c.want) ? ': wants ' + t(c.want) : ''}${t(c.voice) ? '; voice: ' + t(c.voice) : ''}`).join('\n') : '- [CHARACTERS]';
     return [
+      {
+        id: 'H1', tag: 'H1', title: 'Premise picker: a story people get in seconds', attach: [],
+        note: 'Start here if you only have a vague idea. It picks a premise built on a feeling everyone recognises.',
+        text: L(
+          'You are a showrunner of viral vertical short dramas and story-driven ads.',
+          `Project: ${projectLine(S)}. Audience: ${F(S.settings.audience, 'AUDIENCE')}.`,
+          story ? `My idea so far:\n${story}` : 'My idea so far: [ONE OR TWO SENTENCES, or "surprise me"]',
+          ' ',
+          'Give me 5 premises. Each must be understood in seconds and rest on a proven engine: Cinderella (someone ordinary gets an unexpected chance), love against the odds, rivalry, hidden identity, comeback, wrong assumption, ticking clock or fish out of water.',
+          'For each premise: a one-sentence pitch (who, want, twist), the universal feeling behind it (for example "I don\'t belong here and now I\'m in trouble"), the loudest moment that can open the episode, the escalation surprise, and the cliffhanger.',
+          'Then pick the strongest one and say why in two sentences.'
+        )
+      },
+      {
+        id: 'H2', tag: 'H2', title: 'Hook generator (first 3 seconds)', attach: [],
+        text: L(
+          'Write 8 different opening hooks for this story. Each must work on mute and in the first 1 to 3 seconds.',
+          story ? `STORY:\n${story}` : 'STORY: [PASTE STORY OR PREMISE]',
+          ' ',
+          'Use these formulas, at least one each: peak first (open on the loudest moment, then rewind), wrong-impression freeze, physical accident in slow motion, shocking first line, impossible contrast, direct question to camera.',
+          'For each hook give: what we SEE in the first frame, the first line (if any, under 6 words), the question it plants in the viewer\'s mind, and the sound that sells it.',
+          'Rank them by scroll-stopping power, and explain the top pick in one sentence.'
+        )
+      },
+      {
+        id: 'H3', tag: 'H3', title: 'Beat sheet: hook, context, escalation, cliffhanger', attach: [],
+        text: L(
+          `Build a beat sheet for ${t(S.settings.title) ? '"' + t(S.settings.title) + '"' : 'this story'}, ${F(S.settings.length, 'LENGTH')}.`,
+          story ? `STORY:\n${story}` : 'STORY: [PASTE STORY OR PREMISE]',
+          'Cast:', castLines, ' ',
+          'Structure it as four parts:',
+          '1. HOOK: open on the peak moment, shown without explanation.',
+          '2. CONTEXT: who they are and what is at stake, shown through action. An emotional swing every 20 to 30 seconds: a starting point, then hope, then another hit, then a chance.',
+          '3. ESCALATION: an unexpected turn (a new character, a bigger conflict, something nobody sees coming).',
+          '4. CLIFFHANGER: end one beat before the answer everyone wants (a decision, a reveal, a transformation), then cut to black.',
+          '(For an ad, use: hook, relatable misunderstanding, escalation, product reveal, premium showcase, CTA.)',
+          ' ',
+          'For every beat give: the timecode, the scene, what changes, the emotion, and the KEY REACTION to catch. The tension comes from two characters reading the same moment differently, so name what each one thinks is happening.'
+        )
+      },
       {
         id: 'S1', tag: 'S1', title: 'Concept generator', attach: [],
         note: 'For when you have assets but no story yet. Attach your finished sheets in the chat.',
@@ -409,13 +471,18 @@
           t(S.settings.logline) ? 'Logline: ' + t(S.settings.logline) : '',
           t(S.story) ? 'Story so far:\n' + t(S.story) : '',
           `Length: ${F(S.settings.length, 'LENGTH')}. Assets:`, sum, ' ',
-          'For each scene: scene heading (INT./EXT. PLACE - TIME), action lines (what we SEE, physical and specific), dialogue or voice-over.',
+          'Cast and voices:', castLines, ' ',
+          'Structure: HOOK (open on the loudest moment), CONTEXT (emotional swings every 20 to 30 seconds), ESCALATION (an unexpected turn), CLIFFHANGER (end one beat before the answer, cut to black). For ads: hook, misunderstanding, escalation, product reveal, premium showcase, CTA.',
+          'For each scene: scene heading (INT./EXT. PLACE - TIME), its purpose (hook, context, escalation or cliffhanger), action lines (what we SEE, physical and specific, including how people move through the space), dialogue or voice-over, and the KEY REACTIONS to cut to.',
+          'Show both sides of every important moment: what each character thinks is happening. That difference is where the tension comes from.',
           'Dialogue rules for AI lip-sync:',
           '- At most 8 to 10 seconds of speech per line (about 20 to 25 words).',
           '- Natural spoken language: contractions, small pauses written as "...", no speeches.',
           '- Mark the delivery: (whispered), (laughing), (dry, deadpan), (out of breath).',
           '- Mark each line ON-SCREEN (lip-sync needed) or V.O. (voice-over).',
           '- Prefer voice-over and reaction shots over long on-camera talking.',
+          '- Lines start while the movement is still happening: speech rides on top of action, with no dead air.',
+          '- Give each line a timing window in seconds inside its scene, and keep every character voice and accent identical in every scene.',
           'End with the tagline or end-card text (added in the edit, not generated).'
         )
       },
@@ -436,8 +503,33 @@
         id: 'S4', tag: 'S4', title: 'Voice profiles', attach: [],
         note: 'For ElevenLabs or a video model with built-in audio.',
         text: L(
-          'For each speaking character below, write a voice description for a voice generator: age, gender, accent, pitch, pace, texture, energy, and 2 vocal comparisons by type (no celebrity names). Add one sample line in that voice.',
+          'For each speaking character below, write a voice description for a voice generator or a video model with audio: age, gender, accent, pitch, pace, texture, energy, and 2 vocal comparisons by type (no celebrity names). Describe the accent by how it SOUNDS (for example a French accent in English: soft uvular r, dropped h, rounded vowels, stress on the last syllable). Add one sample line. I will paste the same description into every scene where they speak.',
           S.characters.length ? S.characters.map((c) => `- ${c.name || 'unnamed'}, ${charDesc(c)}. Voice notes: ${F(c.voice, 'VOICE NOTES')}`).join('\n') : '- [CHARACTER]'
+        )
+      },
+      {
+        id: 'S6', tag: 'S6', title: 'Acting tasks per scene', attach: [],
+        note: 'Paste the results into the "Acting task" field of each shot. Video models act much better with a clear inner life.',
+        text: L(
+          'For every scene in the script below, write an ACTING TASK for each character in it, in this format:',
+          'DIRECTION (their arc in this scene) / MOTIVE (why they feel this way) / GOAL (what they want right now) / OBSTACLE (what stops them) / TACTIC (how it shows physically: voice, eyes, hands, posture, movement through the space).',
+          'Keep it playable and physical, for example "his irritation shows only as the voice getting quieter and flatter", not "he is annoyed". Note the one reaction the camera must catch.',
+          'Cast:', castLines, ' ', 'SCRIPT:', story || '[PASTE SCRIPT]'
+        )
+      },
+      {
+        id: 'S7', tag: 'S7', title: 'Script doctor', attach: [],
+        text: L(
+          'Review this script like a short-drama showrunner and an ad creative director. Score each item 1 to 5 and give a concrete rewrite for anything under 4:',
+          '1. Hook in the first 3 seconds, readable on mute?',
+          '2. An emotional swing at least every 20 to 30 seconds?',
+          '3. Does every scene change status, knowledge or stakes?',
+          '4. Are both sides of key reactions shown?',
+          '5. Is there one real escalation surprise?',
+          '6. Is every line natural, under 8 seconds, and in character?',
+          '7. Does it end one beat before the answer (or, for an ad, with a clear product reveal and CTA)?',
+          '8. Can every shot actually be generated (no crowds in motion, no complex hand work, no text in frame)?',
+          ' ', 'SCRIPT:', '[PASTE SCRIPT]'
         )
       },
       {
@@ -445,7 +537,7 @@
         text: L(
           'Read the script below. List every character, location, prop and wardrobe change it needs. Mark each one HAVE if it is in my asset list, or NEED if not.',
           'My assets:', sum, ' ',
-          `For each NEED, write a reference-sheet prompt in this style: characters get a 3-panel sheet (front face close-up, front full body, back full body) on a ${GREY}; props get a 6-view sheet on the same grey; locations get an empty 2x2 angle grid (wide 3/4, reverse, medium, textures) with one named light direction.`,
+          `For each NEED, write a reference-sheet prompt in this style: characters get a 3-panel sheet (full-body front with the face ERASED to a blank oval, full-body back, and a large head-and-shoulders portrait) on a ${GREY}; props get a 6-view sheet on the same grey; locations get an empty 2x2 angle grid (wide 3/4, reverse, medium, textures) with one named light direction.`,
           '', 'SCRIPT:', '[PASTE SCRIPT]'
         )
       }
@@ -592,7 +684,8 @@
     const vAttach = attachList([{ label: 'Approved start frame (first frame)', img: s.frame }, ...vlist.map((x) => ({ label: x.label, img: x.img }))]);
     const head = L(
       `SCENE CONTEXT: ${t(S.settings.logline) ? t(S.settings.logline) + ' ' : ''}${F(s.moment, 'WHAT HAPPENS IN THIS SHOT')}.`,
-      R.chars.length ? 'CHARACTER: ' + R.chars.map((c) => `${c.name || 'the character'} (reference Image ${vN(c)})`).join(', ') + '. Identical face, hair and outfit as the start frame for the whole shot.' : '',
+      R.chars.length ? 'ACTIVE REFERENCES: ' + R.chars.map((c) => `${tag(c)} = ${c.name || 'the character'} (reference Image ${vN(c)}${t(c.voice) && s.type === 'dialogue' ? '; voice: ' + t(c.voice) : ''})`).join(', ') + '. Face, hair and outfit 100% match their reference and the start frame for the whole shot.' : '',
+      R.place && t(R.place.layout) ? `LOCATION MAP: ${t(R.place.layout)}` : '',
       R.props.length ? 'PRODUCT: ' + R.props.map((r) => `${r.name || 'the product'} (reference Image ${vN(r)})`).join(', ') + '. Identical shape, logo and label for the whole shot.' : '',
       'FIRST FRAME: Starts exactly on the provided start frame (Image 1). Everything is already in position. No empty frame, no delayed reveal.',
       slow
@@ -615,6 +708,7 @@
           `"${F(s.line, 'EXACT LINE, max about 20 words')}"`,
           t(S.settings.language) ? `LANGUAGE AND ACCENT: ${t(S.settings.language)}. Say the line exactly as written.` : '',
           `PERFORMANCE: ${t(s.beats) ? '\n' + t(s.beats) : 'A small breath before speaking, natural blinks, eyebrows and cheeks move with the emotion, micro head movements.'}`,
+          t(s.acting) ? `ACTING TASK: ${t(s.acting)}` : '',
           listeners.length ? `LISTENER: ${listeners.map((c) => c.name).join(', ')} listens with small natural reactions and the mouth closed.` : '',
           `LIGHTING: ${F(s.light, R.place ? placeLight(R.place) : 'NAMED KEY LIGHT')}, catchlight in the eyes, consistent through the shot.`,
           `AUDIO: The voice sounds recorded in the room, with natural reverb for ${R.place ? R.place.name || 'the location' : 'the location'}. ${t(s.audio) || 'Quiet room tone'}. No music, no subtitles.`,
@@ -635,6 +729,7 @@
           `CAMERA: ${F(s.move, 'CAMERA MOVE, e.g. handheld, slow push-in of about 20 cm')}. ${camTail}`,
           'ACTION TIMING:',
           t(s.beats) || defaultBeats(dur),
+          t(s.acting) ? `ACTING TASK: ${t(s.acting)}` : '',
           `PHYSICS: ${t(s.physics) || 'Real weight and inertia in every movement. Fabric and hair react naturally. Objects have real mass.'}`,
           `LIGHTING: Key light is ${F(s.light, R.place ? placeLight(R.place) : 'NAMED SOURCE + DIRECTION')}. Shadows keep visible detail, never crushed. The light stays consistent through the shot.`,
           `AUDIO: ${t(s.audio) || 'Natural room tone and the real sounds of the action'}. No dialogue, no subtitles, no music.`,

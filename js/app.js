@@ -51,15 +51,17 @@
       ['Face and hair', [
         ['faceShape', 'Face shape', 'oval, defined cheekbones'], ['eyes', 'Eyes', 'dark brown, almond-shaped'],
         ['hair', 'Hair: color, length, texture, style', 'black, shoulder-length, loose waves, middle part', null, true],
-        ['features', 'Anything that makes the face recognizable?', 'small mole above left lip, light freckles', null, true]
+        ['features', 'Anything that makes the face recognizable?', 'small mole above left lip, light freckles', null, true],
+        ['details', 'Small details that must be exact (glasses, jewellery, watch)', 'thin rectangular glasses, three silver chain necklaces', null, true]
       ]],
       ['Wardrobe', [
         ['outfit', 'What are they wearing? Include colors and materials.', 'cream silk blouse, high-waisted black wool trousers, black leather loafers, thin gold chain', null, true],
-        ['outfit2', 'Do they change into a second outfit?', 'camel wool overcoat, white turtleneck', null, true]
+        ['outfit2', 'Do they get a second look later? (hair, glasses or outfit change)', 'hair down below the shoulders, no glasses', null, true]
       ]],
       ['Performance', [
+        ['want', 'What do they want in this story?', 'to be noticed for once without being laughed at', null, true],
         ['emotion', 'The key emotion they show in the story', 'quiet confidence, a hint of mischief'],
-        ['voice', 'How do they sound?', 'low, calm, slight London accent']
+        ['voice', 'How do they sound? Describe the accent by its sounds.', 'low, soft, unhurried; French accent: soft uvular r, dropped h, rounded vowels', null, true]
       ]]
     ],
     places: [
@@ -79,7 +81,8 @@
       ['Realism and variants', [
         ['livedIn', 'Small signs that people live or work here', 'a folded linen towel, a slightly crooked stool, dust in the sunbeam', null, true],
         ['coverage', 'An extra camera position you will need', 'low angle from the doorway at knee height looking toward the window', null, true],
-        ['variant', 'A second lighting or weather version?', 'night, 10 pm, warm tungsten pendant lamps on, blue moonlight through the windows', null, true]
+        ['variant', 'A second lighting or weather version?', 'night, 10 pm, warm tungsten pendant lamps on, blue moonlight through the windows', null, true],
+        ['layout', 'Location map: what is on each side, who stands where (compass)', 'West wall: tall windows. South end: the white table, he sits at its north corner facing north. The mark is 4 m north of him. All cameras on the east side.', null, true]
       ]]
     ],
     props: [
@@ -100,7 +103,7 @@
       ]]
     ]
   };
-  const SHORT = { name: 'Name', role: 'Role', age: 'Age', gender: 'Gender', ethnicity: 'Ethnicity', height: 'Height', build: 'Build', faceShape: 'Face shape', eyes: 'Eyes', hair: 'Hair', features: 'Distinguishing features', outfit: 'Main outfit', outfit2: 'Second outfit', emotion: 'Key emotion', voice: 'Voice', kind: 'Type', description: 'Description', mainArea: 'Main action area', materials: 'Materials', time: 'Time of day', lightSource: 'Light source', lightDir: 'Light direction', weather: 'Weather', livedIn: 'Lived-in details', coverage: 'Extra camera position', variant: 'Variant lighting', what: 'What it is', size: 'Real size', wearable: 'Wearable', colors: 'Colors', logoText: 'Logo text', detail: 'Macro detail', usage: 'Usage', scaleObject: 'Scale object', surface: 'Hero surface' };
+  const SHORT = { name: 'Name', role: 'Role', age: 'Age', gender: 'Gender', ethnicity: 'Ethnicity', height: 'Height', build: 'Build', faceShape: 'Face shape', eyes: 'Eyes', hair: 'Hair', features: 'Distinguishing features', outfit: 'Main outfit', outfit2: 'Second look', details: 'Exact details', want: 'Want', layout: 'Location map', acting: 'Acting task', emotion: 'Key emotion', voice: 'Voice', kind: 'Type', description: 'Description', mainArea: 'Main action area', materials: 'Materials', time: 'Time of day', lightSource: 'Light source', lightDir: 'Light direction', weather: 'Weather', livedIn: 'Lived-in details', coverage: 'Extra camera position', variant: 'Variant lighting', what: 'What it is', size: 'Real size', wearable: 'Wearable', colors: 'Colors', logoText: 'Logo text', detail: 'Macro detail', usage: 'Usage', scaleObject: 'Scale object', surface: 'Hero surface' };
   const SHOT_TYPES = [['action', 'Action'], ['dialogue', 'Dialogue'], ['broll', 'B-roll'], ['transition', 'Transition']];
   const SIZES = ['EWS', 'WS', 'MS', 'MCU', 'CU', 'ECU', 'Insert'];
   const LENSES = ['24mm', '35mm', '50mm', '85mm', '100mm macro'];
@@ -435,7 +438,7 @@
     const seg = `<div class="seg" role="group" aria-label="Input style"><button class="${mode === 'guided' ? 'is-on' : ''}" data-inputmode="guided">Guided</button><button class="${mode === 'form' ? 'is-on' : ''}" data-inputmode="form">All fields</button></div>`;
     const form = `<section class="panel">${FIELDS[kind].map(([g, fs]) => `<fieldset><legend>${g}</legend><div class="form-grid">${fs.map((f) => field(sel, f, kind, true)).join('')}</div></fieldset>`).join('')}
       <div class="row row-end"><button class="btn btn-ghost btn-danger" data-delete="${kind}:${sel.id}">Delete this ${label.toLowerCase()}</button></div></section>`;
-    const photoHint = { characters: 'First image: clear front face. Second: full body.', places: 'One or two photos of the location.', props: 'Front view with the label readable.' }[kind];
+    const photoHint = { characters: 'Image 1: face (C0). Image 2: outfit (C0b). Image 3: details close-up (C0c).', places: 'One or two photos of the location.', props: 'Front view with the label readable.' }[kind];
     const sheetName = { characters: 'C1', places: 'P1', props: 'R1' }[kind];
     return `${pageHead(n, title, intro)}
     <div class="toolbar">${tabs}${seg}</div>
@@ -530,6 +533,7 @@
             ${f('moment', 'Moment (what happens)', 'Maya lifts the sunglasses from the counter and slides them on', true)}
             ${f('blocking', 'Blocking (who is where on screen)', 'Maya right third x 65%, facing left; sunglasses foreground on the counter x 40%', true)}
             ${f('beats', sel.type === 'dialogue' ? 'Performance beats (time-coded)' : 'Action timing (time-coded)', '0-1.5s: she glances down\n1.5-3.5s: she lifts the glasses\n3.5-6s: she slides them on, small exhale', true)}
+            ${f('acting', 'Acting task (motive, goal, obstacle, tactic)', 'MOTIVE: tired of fake faces. GOAL: find one real thing. OBSTACLE: everyone is the same. TACTIC: never raises his voice, it only gets quieter', true)}
             ${f('physics', 'Physics', 'the glasses have real weight; her hair moves as she turns', true)}
             ${f('light', 'Light (source and direction)', 'low warm sun from the left window, hard light on her cheek', true)}
             ${f('audio', 'Sound', 'room tone, distant traffic, click of the hinge', true)}
@@ -673,7 +677,7 @@
   const byName = (arr, n) => arr.find((x) => (x.name || '').trim().toLowerCase() === String(n || '').trim().toLowerCase());
   function cleanShot(o, i) {
     const s = { id: uid(), frame: null };
-    ['code', 'scene', 'type', 'style', 'speed', 'outfit', 'duration', 'screen', 'size', 'angle', 'lens', 'aperture', 'move', 'meme', 'moment', 'blocking', 'beats', 'physics', 'light', 'speaker', 'line', 'delivery', 'audio', 'onscreen', 'vo', 'sfx', 'music', 'edit', 'transition'].forEach((k) => { if (o[k] != null) s[k] = String(o[k]); });
+    ['code', 'scene', 'type', 'style', 'speed', 'outfit', 'duration', 'screen', 'size', 'angle', 'lens', 'aperture', 'move', 'meme', 'moment', 'blocking', 'beats', 'acting', 'physics', 'light', 'speaker', 'line', 'delivery', 'audio', 'onscreen', 'vo', 'sfx', 'music', 'edit', 'transition'].forEach((k) => { if (o[k] != null) s[k] = String(o[k]); });
     if (!SHOT_TYPES.some((t) => t[0] === s.type)) s.type = 'action';
     s.style = s.style === 'premium' ? 'premium' : 'comedy';
     s.speed = /slow/i.test(s.speed || '') ? 'slow' : 'real';
