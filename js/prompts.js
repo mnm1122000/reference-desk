@@ -596,18 +596,86 @@
       note: 'A quick check of flow and framing only. Make the real start frames one by one.',
       attach: att,
       text: L(
-        `Create a storyboard page as one image: a ${grid} grid of film frames, each ${aspect(S)}, thin white gutters, a small frame number in the corner of each frame, no other text.`,
+        `Create a BLACK-AND-WHITE storyboard page as one image: a ${grid} grid of photographic film frames, each ${aspect(S)}, separated by thin black borders on white, a small frame number in the corner of each frame, no other text.`,
         chars.map((c) => `${c.name || 'Character'} is the exact person from Image ${n(c)}.`).join(' '),
         places.map((p) => `The setting is the exact location from Image ${n(p)}.`).join(' '),
         props.map((r) => `The ${r.name || 'prop'} is the exact object from Image ${n(r)}.`).join(' '),
         'Faces, outfits, set and product stay identical in all frames.',
         'Frames:',
-        shots.slice(0, 9).map((s, i) => `${i + 1}. ${F(s.size, 'SIZE')}, ${F(s.angle, 'ANGLE')}, ${F(s.lens, 'LENS')}: ${F(s.moment, 'MOMENT')}. Light: ${F(s.light, 'LIGHT')}.`).join('\n'),
-        `Style: photographic film stills, one consistent grade, ${film(S)} grain, real light falloff.`,
+        shots.slice(0, 9).map((s, i) => { const mm = memeFor(s.meme); return `${i + 1}. ${F(s.size, 'SIZE')}, ${F(s.angle, 'ANGLE')}, ${F(s.lens, 'LENS')}: ${F(s.moment, 'MOMENT')}.${mm ? ' Pose: ' + mm.pose + ' (the ' + mm.name + ' layout).' : ''}`; }).join('\n'),
+        'Style: monochrome black-and-white photographic stills with a full grey scale, real light falloff, fine grain, clear readable poses and expressions. Same look in every frame.',
         guards(S, G.frame(props.map((r) => r.logoText).filter(Boolean).join(', ')))
       )
     };
   }
+
+  /* ================= MEME LIBRARY ================= */
+  const MEMES = [
+    {
+      key: 'distracted', name: 'Distracted Boyfriend', match: /distract/i, media: 'image',
+      source: 'stock photo by Antonio Guillem (2015)', link: 'https://knowyourmeme.com/memes/distracted-boyfriend', find: '',
+      acting: 'Three people on a sunny street. The passing woman is in the foreground walking away, seen from a three-quarter back. The boyfriend in the centre has turned his head back over his shoulder toward her: eyebrows up, lips pushed out as if about to whistle, his body still facing forward. The girlfriend beside him glares at him, mouth open in outrage, one hand half-raised.',
+      pose: 'boyfriend centre, head turned back over his shoulder toward the woman leaving frame; girlfriend at his side glaring at him; the woman in the foreground walking out of frame',
+      timing: 'The head turns in about 0.6 s, then everyone freezes. The edit freezes this exact frame.'
+    },
+    {
+      key: 'chloe', name: 'Side-Eye Chloe', match: /side.?eye|chloe/i, media: 'video',
+      source: 'a 2013 family YouTube video of a little girl hearing about a Disneyland trip', link: 'https://knowyourmeme.com/memes/side-eyeing-chloe', find: 'search YouTube for the original "Lily\'s Disneyland Surprise" video',
+      acting: 'The head stays turned slightly away. Only the eyes slide sideways toward the other person. The upper lip lifts a little on one side in a sceptical half-sneer, the brows pull down, the mouth stays slightly open. Deeply unimpressed, completely still.',
+      pose: 'close-up, head turned three-quarter away, eyes hard sideways toward the camera side, upper lip slightly raised',
+      timing: 'The eyes slide slowly over about 1 s, then hold for at least 1 s without blinking.'
+    },
+    {
+      key: 'yelling', name: 'Woman Yelling at Cat', match: /yell|cat/i, media: 'video',
+      source: 'a reality TV dinner argument (2011) paired with a photo of a confused white cat at a dinner table (2018)', link: 'https://knowyourmeme.com/memes/woman-yelling-at-a-cat', find: 'the left half comes from a reality-TV dinner scene; search "Woman Yelling at Cat original clip"',
+      acting: 'Left side: a woman leans forward across the table, face twisted in tearful anger, shouting, pointing hard across the table with her whole arm. Right side: the accused sits upright behind a dinner plate, completely blank and confused, head slightly tilted back, lips pressed, unbothered.',
+      pose: 'two-shot across a table: her on the left leaning in and pointing, him on the right sitting straight with a blank, puzzled face behind a plate or drink',
+      timing: 'She lunges into the point on the first word and holds the point; he does not react at all.'
+    },
+    {
+      key: 'pikachu', name: 'Surprised Pikachu', match: /pikachu|surprised/i, media: 'video',
+      source: 'a frame from a 1990s anime episode', link: 'https://knowyourmeme.com/memes/surprised-pikachu', find: 'only use it as a timing reference; recreate it with a real face',
+      acting: 'The face freezes in shock: eyes go wide and round, the mouth drops open into a small round O, the head and body stay completely still. No hands, no movement. Pure frozen disbelief.',
+      pose: 'tight front close-up, eyes wide, mouth a small open O, head perfectly still',
+      timing: 'Neutral for about 1 s, then the eyes and mouth snap open in 0.2 s and hold frozen.'
+    },
+    {
+      key: 'bed', name: "I Bet He's Thinking About Other Women", match: /thinking about other|bet he/i, media: 'image',
+      source: 'stock photo of a couple in bed', link: 'https://knowyourmeme.com/memes/i-bet-hes-thinking-about-other-women', find: '',
+      acting: 'A couple lies in bed facing away from each other. She is on her side looking at him with a disappointed, suspicious frown. He lies still with his eyes open, staring into space, lost in his own thoughts. Space above each head for a thought bubble.',
+      pose: 'high angle on the bed, her suspicious on one side, him staring at nothing on the other, empty space above both heads',
+      timing: 'Almost still. Only small blinks and breathing. The thought bubbles are added in the edit.'
+    },
+    {
+      key: 'drake', name: 'Drake Hotline Bling', match: /drake/i, media: 'video',
+      source: 'the 2015 "Hotline Bling" music video', link: 'https://knowyourmeme.com/memes/drakeposting', find: 'search YouTube for "Hotline Bling" (the poses are around the middle of the video)',
+      acting: 'TOP (reject): he turns his head away with a grimace, raising one hand palm-out beside his face as if blocking something. BOTTOM (approve): he faces the other way with a pleased, knowing smile, pointing a finger toward the thing he approves of, chin slightly up, a small nod.',
+      pose: 'top: head turned away, palm raised in rejection; bottom: smiling, pointing toward the approved thing',
+      timing: 'Each panel is a 1 s move into the pose, then a hold.'
+    },
+    {
+      key: 'buttons', name: 'Two Buttons', match: /two buttons|button/i, media: 'image',
+      source: 'a 2014 webcomic ("Daily Struggle")', link: 'https://knowyourmeme.com/memes/daily-struggle', find: '',
+      acting: 'Panel 1: a hand hovers between two big red buttons, unable to choose. Panel 2: the person sweats heavily, wiping the forehead with a cloth, eyes wide with anxiety, looking off to the side.',
+      pose: 'close-up of a sweating face, a towel pressed to the forehead, eyes wide and anxious',
+      timing: 'Eyes flick left and right twice, then the towel wipes the forehead.'
+    },
+    {
+      key: 'fine', name: 'This Is Fine', match: /this is fine|fine/i, media: 'image',
+      source: 'a 2013 webcomic of a dog in a burning room', link: 'https://knowyourmeme.com/memes/this-is-fine', find: '',
+      acting: 'He sits calmly at a table with a mug, a small content smile, surrounded by chaos (here, far too many perfume bottles). Totally relaxed, as if everything is normal, while the room says otherwise.',
+      pose: 'seated at a table holding a mug, calm smile, the chaos all around him filling the frame',
+      timing: 'Calm stillness, a slow sip or a nod, while the camera pulls back to reveal the chaos.'
+    },
+    {
+      key: 'gatsby', name: 'Leonardo DiCaprio Cheers', match: /dicaprio|gatsby|cheers|toast/i, media: 'video',
+      source: 'the 2013 film "The Great Gatsby" (the trailer and the party scene)', link: 'https://knowyourmeme.com/memes/great-gatsby-reaction-leonardo-dicaprio-toast', find: 'search "Great Gatsby toast scene"',
+      acting: 'He turns toward the camera raising a glass at chest height toward the viewer, a charming, knowing smile, eyebrows slightly raised, head tilted a touch, as if toasting you personally. Celebration behind him.',
+      pose: 'facing the camera, glass (here a perfume bottle) raised toward the lens at chest height, knowing smile, eyebrows up',
+      timing: 'Turns and raises the glass in about 1 s, smiles, holds the toast.'
+    }
+  ];
+  function memeFor(name) { const n = t(name); if (!n) return null; return MEMES.find((m) => m.match.test(n)) || null; }
 
   /* ================= SHOTS ================= */
   function shotRefs(S, s) {
@@ -653,41 +721,85 @@
     const slow = s.speed === 'slow';
     const refN = nOf('ref');
 
-    // A. start frame
-    out.push({
-      id: 'A', tag: 'A', title: 'Start frame (image)', required: true,
-      note: refN ? 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it. The last image only guides the composition.' : 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it.',
-      attach: attachList(R.list.map((x) => ({ label: x.label, img: x.img }))),
-      text: L(
-        `A single photographic ${premium ? 'fragrance-commercial still' : 'film still'}. Shot ${F(s.code, 'SHOT CODE')}.`,
-        R.chars.map((c) => `Character: ${c.name || 'the character'}, the exact person from Image ${nOf(c)}, with identical face, hair, skin texture and body, wearing ${s.outfit === 'second' && t(c.outfit2) ? 'their second outfit (' + t(c.outfit2) + ')' : 'their outfit (' + F(c.outfit, 'OUTFIT') + ')'}.`),
-        R.place ? `Location: the exact place from Image ${nOf(R.place)} (${R.place.name || 'location'}), with the same architecture, furniture, materials and colors.` : 'Location: [LOCATION]',
-        R.props.map((r) => `Prop: the exact ${r.name || 'product'} from Image ${nOf(r)}, with the same shape, logo and label, at correct real-world scale (${F(r.size, 'SIZE')}).`),
-        refN ? `Composition: Image ${refN} is a COMPOSITION REFERENCE only${t(s.meme) ? ' (the "' + t(s.meme) + '" format)' : ''}. Match its framing, camera angle, poses, body language, expressions and where everyone is placed. Do NOT copy its people, faces, clothing, colors, text or drawing style. Use only our characters, location and product.` : '',
-        ' ',
-        `Moment: ${F(s.moment, 'ONE FROZEN MOMENT')}.`,
-        `Blocking: ${F(s.blocking, 'WHO IS WHERE ON SCREEN, e.g. character at right third x 65%, facing left; product foreground x 40%')}. Everything is already in place.`,
-        `Shot size and angle: ${F(s.size, 'SHOT SIZE')}, ${F(s.angle, 'ANGLE AND CAMERA HEIGHT')}.`,
-        `Lens: ${F(s.lens, 'LENS')}, f/${F(s.aperture, 'APERTURE')}, natural background falloff.`,
-        `Light: ${F(s.light, R.place ? placeLight(R.place) : 'NAMED SOURCE + DIRECTION + QUALITY')}. No flat front light.`,
-        premium ? `Color and finish: premium fragrance-commercial look, controlled highlights and reflections, deep clean shadows, ${film(S)} grain kept very fine.` : `Color and film: ${film(S)}, natural grain, gentle halation on highlights${t(S.settings.palette) ? ', palette: ' + t(S.settings.palette) : ''}.`,
-        safeArea(S),
-        'No captions, labels, thought bubbles or added text in the image. Those are added in the edit.',
-        `Aspect ratio: ${aspect(S)}.`,
-        guards(S, G.frame(logo))
-      )
-    });
+    const meme = memeFor(s.meme);
+    const acting = t(s.memeActing) || (meme ? meme.acting : '');
+    const keyEnd = s.keyframe === 'end';
 
-    // video attach order: Image 1 = start frame, then character and prop sheets (no place, no composition ref)
+    if (meme || t(s.memeActing)) {
+      out.push({
+        id: 'MEME', tag: 'MEME', title: `Meme reference: ${meme ? meme.name : t(s.meme)}`,
+        note: meme ? `Source: ${meme.source}. ${meme.media === 'video' ? 'A video exists: ' + meme.find : 'Image only (no original video), so match the final frame.'}` : '',
+        attach: [],
+        link: meme ? meme.link : null,
+        text: L(
+          `HOW THE MEME IS ACTED: ${acting || '[DESCRIBE THE MEME POSE AND TIMING]'}`,
+          meme ? `KEY FRAME TO MATCH: ${meme.pose}` : '',
+          meme ? `TIMING: ${meme.timing}` : '',
+          'Recreate the composition, pose and expression with our own actors. Never copy the original image, people or artwork.'
+        )
+      });
+    }
+
+    const frameText = (moment, isKey) => L(
+      `A single photographic ${premium ? 'fragrance-commercial still' : 'film still'}. Shot ${F(s.code, 'SHOT CODE')}${isKey ? ', MEME KEY FRAME (this image becomes the LAST frame of the clip)' : keyEnd ? ', START FRAME (1 to 2 seconds before the meme pose)' : ''}.`,
+      R.chars.map((c) => `Character: ${c.name || 'the character'}, the exact person from Image ${nOf(c)}, with identical face, hair, skin texture and body, wearing ${s.outfit === 'second' && t(c.outfit2) ? 'their second outfit (' + t(c.outfit2) + ')' : 'their outfit (' + F(c.outfit, 'OUTFIT') + ')'}.`),
+      R.place ? `Location: the exact place from Image ${nOf(R.place)} (${R.place.name || 'location'}), with the same architecture, furniture, materials and colors.` : 'Location: [LOCATION]',
+      R.props.map((r) => `Prop: the exact ${r.name || 'product'} from Image ${nOf(r)}, with the same shape, logo and label, at correct real-world scale (${F(r.size, 'SIZE')}).`),
+      refN ? `Composition: Image ${refN} is a COMPOSITION REFERENCE only${t(s.meme) ? ' (the "' + t(s.meme) + '" format)' : ''}. Match its framing, camera angle${isKey || !keyEnd ? ', poses, body language, expressions' : ''} and where everyone is placed. Do NOT copy its people, faces, clothing, colors, text or drawing style. Use only our characters, location and product.` : '',
+      ' ',
+      `Moment: ${moment}.`,
+      isKey && acting ? `MEME POSE (match it exactly): ${acting}` : '',
+      `Blocking: ${F(s.blocking, 'WHO IS WHERE ON SCREEN, e.g. character at right third x 65%, facing left; product foreground x 40%')}. Everything is already in place.`,
+      `Shot size and angle: ${F(s.size, 'SHOT SIZE')}, ${F(s.angle, 'ANGLE AND CAMERA HEIGHT')}.`,
+      `Lens: ${F(s.lens, 'LENS')}, f/${F(s.aperture, 'APERTURE')}, natural background falloff.`,
+      `Light: ${F(s.light, R.place ? placeLight(R.place) : 'NAMED SOURCE + DIRECTION + QUALITY')}. No flat front light.`,
+      premium ? `Color and finish: premium fragrance-commercial look, controlled highlights and reflections, deep clean shadows, ${film(S)} grain kept very fine.` : `Color and film: ${film(S)}, natural grain, gentle halation on highlights${t(S.settings.palette) ? ', palette: ' + t(S.settings.palette) : ''}.`,
+      safeArea(S),
+      'No captions, labels, thought bubbles or added text in the image. Those are added in the edit.',
+      `Aspect ratio: ${aspect(S)}.`,
+      guards(S, G.frame(logo))
+    );
+
+    if (keyEnd) {
+      out.push({
+        id: 'A', tag: 'A', title: 'Start frame (a beat before the meme pose)', required: true,
+        note: 'The clip starts here and moves into the meme pose. Same camera and framing as the key frame.',
+        attach: attachList(R.list.map((x) => ({ label: x.label, img: x.img }))),
+        text: frameText(F(s.before, 'WHAT WE SEE 1 TO 2 SECONDS BEFORE THE MEME POSE'), false)
+      });
+      out.push({
+        id: 'K', tag: 'KEY', title: 'Meme key frame (becomes the LAST frame)', required: true,
+        note: 'Make this match the meme first. Then generate the clip in first-frame plus last-frame mode so it lands exactly on this pose.',
+        attach: attachList(R.list.map((x) => ({ label: x.label, img: x.img }))),
+        text: frameText(F(s.moment, 'THE MEME MOMENT'), true)
+      });
+    } else {
+      out.push({
+        id: 'A', tag: 'A', title: 'Start frame (image)', required: true,
+        note: refN ? 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it. The last image only guides the composition.' : 'Generate 2 to 4 images, pick the best, check it against the sheets, then animate it.',
+        attach: attachList(R.list.map((x) => ({ label: x.label, img: x.img }))),
+        text: L(frameText(F(s.moment, 'ONE FROZEN MOMENT'), false), acting && meme ? `\nMEME POSE: ${acting}` : '')
+      });
+    }
+
+    // video attach order: Image 1 = start frame, (Image 2 = meme key frame), then character and prop sheets
+    const off = keyEnd ? 3 : 2;
     const vlist = R.list.filter((x) => x.kind === 'c' || x.kind === 'r');
-    const vN = (o) => vlist.findIndex((x) => x.obj === o) + 2;
-    const vAttach = attachList([{ label: 'Approved start frame (first frame)', img: s.frame }, ...vlist.map((x) => ({ label: x.label, img: x.img }))]);
+    const vN = (o) => vlist.findIndex((x) => x.obj === o) + off;
+    const vAttach = attachList([
+      { label: 'Approved start frame (FIRST frame)', img: s.frame },
+      keyEnd ? { label: 'Approved meme key frame (LAST frame)', img: s.keyImg } : null,
+      ...vlist.map((x) => ({ label: x.label, img: x.img }))
+    ]);
     const head = L(
       `SCENE CONTEXT: ${t(S.settings.logline) ? t(S.settings.logline) + ' ' : ''}${F(s.moment, 'WHAT HAPPENS IN THIS SHOT')}.`,
       R.chars.length ? 'ACTIVE REFERENCES: ' + R.chars.map((c) => `${tag(c)} = ${c.name || 'the character'} (reference Image ${vN(c)}${t(c.voice) && s.type === 'dialogue' ? '; voice: ' + t(c.voice) : ''})`).join(', ') + '. Face, hair and outfit 100% match their reference and the start frame for the whole shot.' : '',
       R.place && t(R.place.layout) ? `LOCATION MAP: ${t(R.place.layout)}` : '',
       R.props.length ? 'PRODUCT: ' + R.props.map((r) => `${r.name || 'the product'} (reference Image ${vN(r)})`).join(', ') + '. Identical shape, logo and label for the whole shot.' : '',
-      'FIRST FRAME: Starts exactly on the provided start frame (Image 1). Everything is already in position. No empty frame, no delayed reveal.',
+      keyEnd ? 'FIRST AND LAST FRAME: starts exactly on Image 1 and lands exactly on Image 2 (the meme pose) by the final 0.6 seconds, then holds perfectly still there. Use first-frame and last-frame mode.' : '',
+      acting && meme ? `MEME PERFORMANCE: ${acting} TIMING: ${meme.timing}` : (t(s.memeActing) ? `MEME PERFORMANCE: ${t(s.memeActing)}` : ''),
+      meme && meme.media === 'video' ? `(If your tool accepts a reference video, attach the original meme clip as a MOTION AND TIMING reference only: copy the expression timing, never the person.)` : '',
+      keyEnd ? '' : 'FIRST FRAME: Starts exactly on the provided start frame (Image 1). Everything is already in position. No empty frame, no delayed reveal.',
       slow
         ? `FORMAT: Single continuous take, ${dur} seconds, smooth constant slow motion (120 fps look). No cuts, no transitions, no speed ramps.`
         : `FORMAT: Single continuous take, ${dur} seconds, real-time speed. No cuts, no transitions, no speed ramps, no slow motion.`
@@ -869,5 +981,5 @@
     'Does it hold up next to the shot before and after it?'
   ];
 
-  window.Prompts = { character, place, prop, breakdown, script, shotlist, storyboard, shotPrompts, shotRefs, assembly, timeline, fixes, VIDEO_FIXES, QC, JSON_SCHEMA };
+  window.Prompts = { MEMES, memeFor, character, place, prop, breakdown, script, shotlist, storyboard, shotPrompts, shotRefs, assembly, timeline, fixes, VIDEO_FIXES, QC, JSON_SCHEMA };
 })();

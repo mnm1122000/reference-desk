@@ -393,3 +393,52 @@ table.shots { width: 100%; border-collapse: collapse; font-size: 14px; }
 .tl-seg:hover { transform: translateY(-3px); background: var(--faint); color: var(--text); }
 .tl-seg.is-premium { background: var(--accent); color: var(--on-accent); }
 .tl-seg span { white-space: nowrap; overflow: hidden; }
+
+/* ---------- meme cards ---------- */
+.meme-card { margin-top: 12px; padding: 14px 16px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+.meme-card p { margin: 8px 0 0; font-size: 14px; }
+.meme-card .form-grid { margin-top: 12px; }
+.meme-head { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.meme-head strong { font: 700 16px var(--display); }
+.meme-head span { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.meme-head a, .prompt-link { color: var(--accent-fg); font-weight: 600; font-size: 13px; margin-left: auto; }
+.prompt-link { margin-left: 0; }
+.meme-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.meme-list .meme-card { margin: 0; }
+
+/* ---------- black-and-white storyboard sheet (always paper) ---------- */
+.sb-sheet { background: #fff; color: #111; border-radius: var(--r); padding: 24px; margin-bottom: 18px; font-family: var(--sans); }
+.sb-title { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 18px; }
+.sb-title strong { font: 800 26px var(--display); letter-spacing: -.02em; }
+.sb-title span { font: 500 12px var(--mono); color: #555; }
+.sb-scene { margin-bottom: 22px; break-inside: avoid-page; }
+.sb-scene h3 { font: 600 12px var(--mono); letter-spacing: 1.4px; color: #111; margin: 0 0 10px; }
+.sb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; }
+.sb-grid.is-vertical { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.sb-panel { cursor: pointer; break-inside: avoid; }
+.sb-panel:hover .sb-frame { outline: 2px solid #111; }
+.sb-frame { position: relative; aspect-ratio: 16 / 9; border: 1.5px solid #111; background: #f1f1f1; overflow: hidden; display: grid; place-items: center; }
+.sb-frame.is-vertical { aspect-ratio: 9 / 16; }
+.sb-frame img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(1) contrast(1.05); }
+.sb-empty { font: 600 12px var(--mono); color: #888; text-align: center; }
+.sb-code, .sb-time, .sb-meme { position: absolute; font: 600 10px var(--mono); background: #fff; color: #111; padding: 2px 5px; border: 1px solid #111; }
+.sb-code { top: 6px; left: 6px; }
+.sb-time { bottom: 6px; left: 6px; }
+.sb-meme { top: 30px; left: 6px; max-width: 85%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #111; color: #fff; }
+.sb-text { padding-top: 8px; font-size: 12px; line-height: 1.45; }
+.sb-text p { margin: 0 0 4px; }
+.sb-tech { font: 500 10.5px var(--mono); color: #555; }
+.sb-meta { color: #555; }
+.sb-line { font-style: italic; }
+.sb-actions { margin: 0 0 14px; }
+
+@media print {
+  body { background: #fff !important; }
+  .rail, .page-head, .sb-actions, .panel, .section-label, .prompt, .next-bar, .toast { display: none !important; }
+  .app { display: block; }
+  .view { padding: 0; max-width: none; }
+  .view > * { animation: none !important; }
+  .sb-sheet { border-radius: 0; padding: 0; }
+  .sb-grid { grid-template-columns: repeat(4, 1fr); }
+  .sb-grid.is-vertical { grid-template-columns: repeat(6, 1fr); }
+}

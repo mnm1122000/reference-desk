@@ -132,7 +132,7 @@
   /* ---------------- navigation ---------------- */
   const NAV = [
     ['project', 'Project'], ['story', 'Story breakdown'], ['characters', 'Characters'], ['places', 'Places'], ['props', 'Props'],
-    ['script', 'Script and dialogue'], ['shotlist', 'Shotlist'], ['shots', 'Shots'], ['edit', 'Edit and assembly'], ['fix', 'Fix library']
+    ['script', 'Script and dialogue'], ['shotlist', 'Shotlist'], ['board', 'Storyboard'], ['shots', 'Shots'], ['edit', 'Edit and assembly'], ['fix', 'Fix library']
   ];
   function ring(p, n) {
     const C = 2 * Math.PI * 9;
@@ -141,12 +141,12 @@
   function renderNav() {
     let sum = 0;
     $('#nav').innerHTML = NAV.map(([v, label], i) => {
-      const skip = v === 'fix' || v === 'edit'; const p = skip ? 0 : stepProgress(v); if (!skip) sum += p;
+      const skip = v === 'fix' || v === 'edit' || v === 'board'; const p = skip ? 0 : stepProgress(v); if (!skip) sum += p;
       const c = ASSET(v) || v === 'shots' ? S[v].length : '';
       return `<li><button class="nav-item${S.view === v ? ' is-active' : ''}" data-go="${v}" ${S.view === v ? 'aria-current="page"' : ''}>
         ${ring(p, i)}<span class="nav-label">${label}</span><span class="nav-count">${c || ''}</span></button></li>`;
     }).join('');
-    const pct = Math.round((sum / (NAV.length - 2)) * 100);
+    const pct = Math.round((sum / (NAV.length - 3)) * 100);
     $('#overallPct').textContent = pct + '%';
     $('#overallBar').style.width = pct + '%';
   }
@@ -175,6 +175,7 @@
       </header>
       <div class="prompt-body"><div class="prompt-inner">
         ${p.note ? `<p class="prompt-note">${esc(p.note)}</p>` : ''}
+        ${p.link ? `<p class="prompt-note"><a class="prompt-link" href="${esc(p.link)}" target="_blank" rel="noopener">Open the meme reference</a></p>` : ''}
         ${attach}
         <pre class="prompt-text" tabindex="0">${highlight(p.text)}</pre>
         <div class="prompt-actions"><span class="hint">${blanks ? 'Highlighted parts are still blank' : 'Copying marks it as done'}</span>
@@ -487,7 +488,7 @@
     </section>
     ${boards ? `<div class="section-label">Storyboard per scene</div>${boards}` : ''}
     ${promptCard(b3, 'shotlist', null)}
-    ${nextBar('shots', 'Make the shots')}`;
+    ${nextBar('board', 'See the storyboard')}`;
   }
 
   function viewShots() {
@@ -495,7 +496,7 @@
     let sel = list.find((x) => x.id === S.sel.shots) || list[0];
     if (sel) S.sel.shots = sel.id;
     if (!sel) {
-      return `${pageHead('07', 'Shots', 'Each shot is an image first, then a video.')}
+      return `${pageHead('08', 'Shots', 'Each shot is an image first, then a video.')}
       <section class="empty"><h3>No shots yet</h3><p>Build them on the shotlist page, or add one here.</p><button class="btn btn-accent" data-add="shots">+ Add a shot</button></section>`;
     }
     const idx = list.indexOf(sel);
@@ -503,7 +504,7 @@
     const opt = (arr, cur) => arr.map((v) => `<option${cur === v ? ' selected' : ''}>${v}</option>`).join('');
     const checks = (arr, ids, key) => arr.length ? arr.map((x) => `<label class="chip"><input type="checkbox" data-multi="${key}" value="${x.id}" ${(ids || []).includes(x.id) ? 'checked' : ''}><span>${esc(x.name || 'unnamed')}</span></label>`).join('') : '<span class="muted">none yet</span>';
     const f = (k, l, ph, wide) => field(sel, [k, l, ph, null, wide], 'shots');
-    return `${pageHead('07', 'Shots', 'Each shot is an image first, then a video. Approve the start frame before you spend video credits.')}
+    return `${pageHead('08', 'Shots', 'Each shot is an image first, then a video. Approve the start frame before you spend video credits.')}
     <div class="shot-strip" role="tablist">${list.map((s, i) => { const d = shotDone(s); return `<button role="tab" class="shot-chip${s.id === sel.id ? ' is-active' : ''}" aria-selected="${s.id === sel.id}" data-select="shots:${s.id}"><span class="mono">${esc(s.code || 'SH' + (i + 1))}</span><small>${esc(typeLabel(s.type))} / ${esc(s.duration || '?')}s</small><span class="dots"><i class="${d > 0 ? 'on' : ''}"></i><i class="${d > 1 ? 'on' : ''}"></i></span></button>`; }).join('')}<button class="shot-chip shot-add" data-add="shots">+ Add</button></div>
     <div class="split">
       <div class="split-form">
@@ -516,8 +517,13 @@
             <label class="field"><span>Style</span><select data-field="style" data-scope="shots"><option value="comedy"${sel.style !== 'premium' ? ' selected' : ''}>Natural / comedy (handheld)</option><option value="premium"${sel.style === 'premium' ? ' selected' : ''}>Premium / product (smooth)</option></select></label>
             <label class="field"><span>Wardrobe</span><select data-field="outfit" data-scope="shots"><option value="main"${sel.outfit !== 'second' ? ' selected' : ''}>Main outfit</option><option value="second"${sel.outfit === 'second' ? ' selected' : ''}>Second outfit</option></select></label>
             <label class="field"><span>Speed</span><select data-field="speed" data-scope="shots"><option value="real"${sel.speed !== 'slow' ? ' selected' : ''}>Real-time</option><option value="slow"${sel.speed === 'slow' ? ' selected' : ''}>Slow motion</option></select></label>
-            ${f('meme', 'Reference format (optional)', 'Distracted Boyfriend')}
-          </div></fieldset>
+            ${f('meme', 'Meme or reference format (optional)', 'Distracted Boyfriend')}
+            <label class="field"><span>Meme key frame</span><select data-field="keyframe" data-scope="shots" data-rerender="1"><option value="start"${sel.keyframe !== 'end' ? ' selected' : ''}>Start frame only</option><option value="end"${sel.keyframe === 'end' ? ' selected' : ''}>Meme pose is the LAST frame</option></select></label>
+          </div>
+          ${(() => { const mm = P.memeFor(sel.meme); return mm || sel.keyframe === 'end' ? `<div class="meme-card">${mm ? `<div class="meme-head"><strong>${esc(mm.name)}</strong><span>${mm.media === 'video' ? 'video exists' : 'image only'}</span><a href="${esc(mm.link)}" target="_blank" rel="noopener">Reference</a></div><p>${esc(mm.acting)}</p>${mm.find ? `<p class="muted">Video: ${esc(mm.find)}</p>` : ''}` : ''}
+            <div class="form-grid">${f('memeActing', 'How the meme is acted (leave empty to use the library)', mm ? 'uses the library guide above' : 'pose, expression and timing of the meme', true)}
+            ${sel.keyframe === 'end' ? f('before', 'What we see 1 to 2 s BEFORE the meme pose (the start frame)', 'Aiman mid-step beside Sara, the Passing Woman just reaching him', true) : ''}</div></div>` : ''; })()}
+          </fieldset>
           <fieldset><legend>In the shot</legend>
             <div class="chips"><span class="chips-label">Characters</span>${checks(S.characters, sel.charIds, 'charIds')}</div>
             <div class="chips"><span class="chips-label">Place</span>${S.places.length ? S.places.map((p) => `<label class="chip"><input type="radio" name="placeId" data-single="placeId" value="${p.id}" ${sel.placeId === p.id ? 'checked' : ''}><span>${esc(p.name || 'unnamed')}</span></label>`).join('') : '<span class="muted">none yet</span>'}</div>
@@ -557,12 +563,51 @@
         </section>
         <section class="panel">
           ${imageSlot('Approved start frame', 'The start frame you picked. The video prompt uses it.', sel.frame ? [sel.frame] : [], 'frame', false)}
+          ${sel.keyframe === 'end' ? imageSlot('Approved meme key frame', 'The meme pose you picked. It becomes the LAST frame.', sel.keyImg ? [sel.keyImg] : [], 'keyImg', false) : ''}
           <div class="row row-between"><button class="btn btn-ghost" data-dup="${sel.id}">Duplicate shot</button><button class="btn btn-ghost btn-danger" data-delete="shots:${sel.id}">Delete shot</button></div>
         </section>
       </div>
       <div class="split-prompts"><p class="live">Live prompts</p><div id="prompts">${promptList(P.shotPrompts(S, sel, next), 'shots', sel.id)}</div></div>
     </div>
     ${nextBar('edit', 'Plan the edit')}`;
+  }
+
+  function viewBoard() {
+    const rows = P.timeline(S);
+    const fmt = (x) => `${Math.floor(x / 60)}:${(x % 60).toFixed(1).padStart(4, '0')}`;
+    const vertical = (S.settings.aspect || '') === '9:16';
+    const scenes = [];
+    rows.forEach((r) => { const k = r.s.scene || (r.s.code || '').split('_')[0]; let g = scenes.find((x) => x.k === k); if (!g) scenes.push(g = { k, rows: [] }); g.rows.push(r); });
+    const panel = (r) => {
+      const s = r.s; const mm = P.memeFor(s.meme);
+      const img = s.keyImg || s.frame || s.refImg;
+      const place = S.places.find((p) => p.id === s.placeId);
+      const who = (s.charIds || []).map((id) => (S.characters.find((c) => c.id === id) || {}).name).filter(Boolean).join(', ');
+      return `<article class="sb-panel" data-openshot="${s.id}" tabindex="0">
+        <div class="sb-frame${vertical ? ' is-vertical' : ''}">${img ? `<img data-img="${img}" alt="">` : `<span class="sb-empty">${esc(s.size || 'SHOT')}<br>${esc(s.lens || '')}</span>`}
+          <span class="sb-code">${esc(s.code)}</span><span class="sb-time">${fmt(r.start)}  ${r.len}s</span>${mm ? `<span class="sb-meme">${esc(mm.name)}</span>` : ''}</div>
+        <div class="sb-text">
+          <p class="sb-tech">${esc([s.size, s.lens, s.move].filter(Boolean).join(' / '))}</p>
+          <p>${esc(s.moment || '')}</p>
+          ${who || place ? `<p class="sb-meta">${esc(who)}${place ? ' @ ' + esc(place.name) : ''}</p>` : ''}
+          ${s.type === 'dialogue' && s.line ? `<p class="sb-line">${esc(s.speaker || '')}: "${esc(s.line)}"</p>` : ''}
+          ${s.vo ? `<p class="sb-line">VO: "${esc(s.vo)}"</p>` : ''}
+          ${s.onscreen ? `<p class="sb-meta">TEXT: ${esc(s.onscreen)}</p>` : ''}
+          ${s.sfx ? `<p class="sb-meta">SFX: ${esc(s.sfx)}</p>` : ''}
+        </div></article>`;
+    };
+    const lib = P.MEMES.filter((m) => S.shots.some((s) => P.memeFor(s.meme) === m));
+    return `${pageHead('07', 'Storyboard', 'A black-and-white storyboard of every shot in order. Panels use the meme key frame, the start frame or the composition reference, whichever exists. Click a panel to open the shot, or print it.')}
+    <div class="row sb-actions"><button class="btn btn-accent" id="printBoard">Print or save as PDF</button></div>
+    <section class="sb-sheet">
+      <header class="sb-title"><strong>${esc(S.settings.title || 'Untitled')}</strong><span>${rows.length} shots / ${fmt(rows.length ? rows[rows.length - 1].end : 0)} / ${esc(S.settings.aspect || '')}</span></header>
+      ${scenes.map((g) => `<div class="sb-scene"><h3>${esc(g.k)}</h3><div class="sb-grid${vertical ? ' is-vertical' : ''}">${g.rows.map(panel).join('')}</div></div>`).join('') || '<p>No shots yet.</p>'}
+    </section>
+    ${lib.length ? `<section class="panel"><div class="panel-head"><h2>Meme references used</h2><p>How each meme is acted, and where to find the original.</p></div>
+      <div class="meme-list">${lib.map((m) => `<div class="meme-card"><div class="meme-head"><strong>${esc(m.name)}</strong><span>${m.media === 'video' ? 'video exists' : 'image only, match the last frame'}</span><a href="${esc(m.link)}" target="_blank" rel="noopener">Reference</a></div><p>${esc(m.acting)}</p><p class="muted">Key frame: ${esc(m.pose)}. Timing: ${esc(m.timing)}${m.find ? ' Video: ' + esc(m.find) + '.' : ''}</p></div>`).join('')}</div></section>` : ''}
+    <div class="section-label">Black-and-white storyboard prompts (one image per scene)</div>
+    ${scenes.map((g) => promptCard(P.storyboard(S, g.k, g.rows.map((r) => r.s)), 'board', g.k)).join('')}
+    ${nextBar('shots', 'Make the shots')}`;
   }
 
   function viewEdit() {
@@ -572,7 +617,7 @@
     const width = (r) => total ? (r.len / total) * 100 : 0;
     const bar = rows.map((r) => `<button class="tl-seg${r.s.style === 'premium' ? ' is-premium' : ''}" style="flex-basis:${width(r)}%" data-openshot="${r.s.id}" title="${esc(r.s.code)}: ${esc(r.s.moment || '')}"><span>${esc((r.s.code || '').replace(/^SC\d+_/, ''))}</span></button>`).join('');
     const table = rows.map((r) => `<tr data-openshot="${r.s.id}" tabindex="0"><td class="mono">${fmt(r.start)}</td><td class="mono">${esc(r.s.code)}</td><td>${r.len}s</td><td class="t-moment">${esc(r.s.onscreen || (r.s.line ? '"' + r.s.line + '"' : ''))}</td><td class="t-moment">${esc(r.s.sfx || '')}</td><td class="t-moment">${esc(r.s.edit || '')}</td></tr>`).join('');
-    return `${pageHead('08', 'Edit and assembly', 'Everything you need to cut the generated clips into one video: the timeline, subtitles, sound cues, product placement and the continuity guide.')}
+    return `${pageHead('09', 'Edit and assembly', 'Everything you need to cut the generated clips into one video: the timeline, subtitles, sound cues, product placement and the continuity guide.')}
     <section class="panel">
       <div class="panel-head"><h2>Timeline</h2><p>${rows.length} shots, ${fmt(total)} total. Lime blocks are premium shots. Click a block to open the shot.</p></div>
       ${rows.length ? `<div class="tl">${bar}</div>
@@ -583,7 +628,7 @@
   }
 
   function viewFix() {
-    return `${pageHead('09', 'Fix library', 'When a result still looks generated. With quality guards on, these rules are already in every prompt, and these prompts repair what slips through.')}
+    return `${pageHead('10', 'Fix library', 'When a result still looks generated. With quality guards on, these rules are already in every prompt, and these prompts repair what slips through.')}
     <div id="prompts">${promptList(P.fixes(S), 'fix', null)}</div>
     <section class="panel">
       <div class="panel-head"><h2>Video problems</h2><p>What to change in the prompt.</p></div>
@@ -603,7 +648,7 @@
     renderNav();
     const v = S.view;
     $('#view').innerHTML = v === 'project' ? viewProject() : v === 'story' ? viewStory() : ASSET(v) ? viewAssets(v)
-      : v === 'script' ? viewScript() : v === 'shotlist' ? viewShotlist() : v === 'shots' ? viewShots() : v === 'edit' ? viewEdit() : viewFix();
+      : v === 'script' ? viewScript() : v === 'shotlist' ? viewShotlist() : v === 'shots' ? viewShots() : v === 'edit' ? viewEdit() : v === 'board' ? viewBoard() : viewFix();
     hydrate($('#view'));
     $('#projTitle').textContent = S.settings.title || 'Untitled project';
     if (v === 'project') startViewfinder();
@@ -677,7 +722,7 @@
   const byName = (arr, n) => arr.find((x) => (x.name || '').trim().toLowerCase() === String(n || '').trim().toLowerCase());
   function cleanShot(o, i) {
     const s = { id: uid(), frame: null };
-    ['code', 'scene', 'type', 'style', 'speed', 'outfit', 'duration', 'screen', 'size', 'angle', 'lens', 'aperture', 'move', 'meme', 'moment', 'blocking', 'beats', 'acting', 'physics', 'light', 'speaker', 'line', 'delivery', 'audio', 'onscreen', 'vo', 'sfx', 'music', 'edit', 'transition'].forEach((k) => { if (o[k] != null) s[k] = String(o[k]); });
+    ['code', 'scene', 'type', 'style', 'speed', 'outfit', 'duration', 'screen', 'size', 'angle', 'lens', 'aperture', 'move', 'meme', 'keyframe', 'before', 'memeActing', 'moment', 'blocking', 'beats', 'acting', 'physics', 'light', 'speaker', 'line', 'delivery', 'audio', 'onscreen', 'vo', 'sfx', 'music', 'edit', 'transition'].forEach((k) => { if (o[k] != null) s[k] = String(o[k]); });
     if (!SHOT_TYPES.some((t) => t[0] === s.type)) s.type = 'action';
     s.style = s.style === 'premium' ? 'premium' : 'comedy';
     s.speed = /slow/i.test(s.speed || '') ? 'slow' : 'real';
@@ -743,7 +788,7 @@
   }
 
   document.addEventListener('click', async (e) => {
-    const t = e.target.closest('button, [data-go], [data-toggle], tr[data-openshot]');
+    const t = e.target.closest('button, a[href], [data-go], [data-toggle], [data-openshot]');
     if (!t) return;
     const d = t.dataset;
     if (d.go) { e.preventDefault(); go(d.go); document.body.classList.remove('menu-open'); return; }
@@ -792,6 +837,7 @@
     if (d.cutboard) { $('#cutter')?.remove(); openCutter(d.cutboard, $('#cropShot') && $('#cropShot').value); return; }
     if (d.closecut) { closeCutter(); return; }
     if (t.id === 'cropAssign') { assignCut(); return; }
+    if (t.id === 'printBoard') { window.print(); return; }
     if (d.removeBoard) {
       if (!confirm('Remove this board? Panels already cut from it stay on their shots.')) return;
       const b = S.boards.find((x) => x.id === d.removeBoard); if (b) DB.del(b.img);
@@ -875,7 +921,7 @@
   async function exportProject() {
     const ids = new Set();
     ['characters', 'places', 'props'].forEach((k) => S[k].forEach((x) => { (x.photos || []).forEach((i) => ids.add(i)); ['sheet', 'map'].forEach((f) => x[f] && ids.add(x[f])); }));
-    S.shots.forEach((s) => { if (s.frame) ids.add(s.frame); if (s.refImg) ids.add(s.refImg); });
+    S.shots.forEach((s) => { ['frame', 'refImg', 'keyImg'].forEach((k) => s[k] && ids.add(s[k])); });
     (S.boards || []).forEach((b) => ids.add(b.img));
     const images = {};
     for (const id of ids) { const b = await DB.get(id); if (b) images[id] = await blobToData(b); }
